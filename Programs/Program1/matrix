@@ -86,7 +86,7 @@ function getMatrixAdMu(){
     fi
 }
 
-function _validateFile(){
+function _checkFile(){
     # NAME
 
     # SYNOPSIS
@@ -109,25 +109,56 @@ function _validateFile(){
     fi
 }
 
+function _checkMatrix(){
+    local prevCols=-1
+    local currentCols=0
+    local numCols=0
+    local numRows=0
+    echo "Checking Matrix..."
+    while read line || [ -n "$line" ]
+    do
+        # iterate through each item in line
+        for item in $line
+        do
+            (( currentCols++ ))
+        done
+
+        # Check for column mismatch / get dimensions
+        if [ "$prevCols" -lt "0" ]
+        then
+            prevCols="$currentCols"
+        elif [ "$prevCols" -ne "$currentCols" ]
+        then
+            echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
+            exit 7
+        fi
+        numCols="$currentCols"
+        currentCols=0
+        (( numRows++ ))
+
+    done < "$1"
+
+    totalRows="$numRows"
+    totalCols="$numCols"
+}
+
 function validateMatrix(){
     echo "TESTING validateMatrix"
 
-    # echo "Going through each line"
-    # local lineNum=0
-    # while read line || [ -n "$line" ]
-    # do
-    #     ((++lineNum))
-    #     echo "Line $lineNum: $line"
-    # done < "$1"
-    # echo ""
+    _checkFile "$1"
+    _checkMatrix "$1"
+}
 
-    _validateFile "$1"
+function dims() {
+    echo "$totalRows $totalCols"
 }
 
 NUMARG=$#
 OPERATION=$1
 MATRIX1="./temp/tempMatrix1_$$"
 MATRIX2="./temp/tempMatrix2_$$"
+totalRows=0
+totalCols=0
 
 # Check for Valid Operations.
 checkOperationValid "$OPERATION"
@@ -145,3 +176,7 @@ getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
 
 # Check If Matrix/Matrices are Valid
 validateMatrix "$MATRIX1"
+
+# DEBUGGING FOR validateMatrix functions
+echo "Total Rows: $totalRows"
+echo "Total Cols: $totalCols"
