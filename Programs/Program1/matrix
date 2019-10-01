@@ -35,6 +35,7 @@ function getMatrixDiTrMe(){
         if [ "$2" = "1" ]
         then
             # echo "Piping into $MATRIX1..." #DEBUGGING
+            mkdir -p temp
             cat > "$MATRIX1"
         elif [ "$2" = "2" ]
         then
@@ -68,6 +69,7 @@ function getMatrixAdMu(){
         elif [ "$2" = "2" ]
         then
             # echo "Piping into $MATRIX1..." #DEBUGGING
+            mkdir -p temp
             cat > "$MATRIX1"
             # echo "Setting MATRIX2 to $3"  #DEBUGGING
             MATRIX2="$3"
@@ -84,10 +86,27 @@ function getMatrixAdMu(){
     fi
 }
 
+function validateMatrix(){
+    echo "TESTING validateMatrix"
+
+    echo "MATRIX CONTENTS:"
+    cat "$1"
+    echo ""
+
+    echo "Going through each line"
+    local lineNum=0
+    while read line || [ -n "$line" ]
+    do
+        ((++lineNum))
+        echo "Line $lineNum: $line"
+    done < "$1"
+    echo ""
+}
+
 NUMARG=$#
 OPERATION=$1
-MATRIX1="tempMatrix1_$$"
-MATRIX2="tempMatrix2_$$"
+MATRIX1="./temp/tempMatrix1_$$"
+MATRIX2="./temp/tempMatrix2_$$"
 
 # Check for Valid Operations.
 checkOperationValid "$OPERATION"
@@ -96,11 +115,12 @@ checkOperationValid "$OPERATION"
 getMatrixDiTrMe "$OPERATION" "$NUMARG" "$2"
 getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
 
-# Validate Matrices
-
 # DEBUGGING FOR getMatrix functions
 # echo "Matrix 1:"
 # cat "$MATRIX1"
 # [ "$OPERATION" == "add" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
 # [ "$OPERATION" == "multiply" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
 # echo ""
+
+# Check If Matrix/Matrices are Valid
+validateMatrix "$MATRIX1"
