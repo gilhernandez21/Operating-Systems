@@ -1,0 +1,106 @@
+#!/bin/bash
+
+function checkOperationValid(){
+    # NAME
+    #   checkOperationValid - check if argument is a valid operation
+    # SYNOPSIS
+    #   checkOperationValid OPERATION
+    # DESCRIPTION
+    #   Exits script if no argument, or an invalid operation is called as an argument.
+
+    if [ "$1" == "" ]
+    then
+        echo "ERROR: Missing Arguments" >&2
+        exit 1
+    elif [ "$1" != "dims" ] && [ "$1" != "transpose" ] && [ "$1" != "mean" ] && [ "$1" != "add" ] && [ "$1" != "multiply" ]
+    then
+        echo "ERROR: '$1' is not a valid operation." >&2
+        exit 2
+    fi
+}
+
+# TODO: DELETE tempMatrix files if they exist
+function getMatrixDiTrMe(){
+    # NAME
+    #   getMatrixDiTrMe - gets Matrix used for dims, transpose, or mean functions from
+    #   either a file or from stdin.
+    #   USES GLOBAL VARIABLE MATRIX1
+    # SYNOPSIS
+    #   getMatrixDiTrMe OPERATION NUMBER_OF_ARGUMENTS MATRIX
+    # DESCRIPTION
+    #   Exits script if there are too many arguments.
+
+    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
+    then
+        if [ "$2" = "1" ]
+        then
+            # echo "Piping into $MATRIX1..." #DEBUGGING
+            cat > "$MATRIX1"
+        elif [ "$2" = "2" ]
+        then
+            # echo "Setting MATRIX1 to $3..." #DEBUGGING
+            MATRIX1="$3"
+        else
+            echo "ERROR: Too Many Arguments" >&2
+            exit 3
+        fi
+    fi
+}
+
+# TODO: FIGURE OUT CASE WHERE NO ARGUMENTS
+# TODO: DELETE tempMatrix files if they exist
+function getMatrixAdMu(){
+    # NAME
+    #   getMatrixAdMu - gets Matrices used for add or multiply functions from
+    #   either a file or from stdin.
+    #   USES GLOBAL VARIABLES MATRIX1 AND MATRIX2
+    # SYNOPSIS
+    #   getMatrixAdMu OPERATION NUMBER_OF_ARGUMENTS MATRIX_1 MATRIX_2
+    # DESCRIPTION
+    #   Exits script if there are too many arguments
+
+    if [ "$1" == "add" ] || [ "$1" == "multiply" ]
+    then
+        if [ "$2" = "1" ] #FIXME
+        then
+            echo "FIXME - TOO FEW ARGUMENTS FOR getMatrixAdMu" >&2
+            exit 50
+        elif [ "$2" = "2" ]
+        then
+            # echo "Piping into $MATRIX1..." #DEBUGGING
+            cat > "$MATRIX1"
+            # echo "Setting MATRIX2 to $3"  #DEBUGGING
+            MATRIX2="$3"
+        elif [ "$2" = "3" ]
+        then
+            # echo "Setting MATRIX1 to $3..."  #DEBUGGING
+            MATRIX1="$3"
+            # echo "Setting MATRIX2 to $4..." #DEBUGGING
+            MATRIX2="$4"
+        else
+            echo "ERROR: Too Many Arguments" >&2
+            exit 3
+        fi
+    fi
+}
+
+NUMARG=$#
+OPERATION=$1
+MATRIX1="tempMatrix1_$$"
+MATRIX2="tempMatrix2_$$"
+
+# Check for Valid Operations.
+checkOperationValid "$OPERATION"
+
+# Get Matrices / Check Number of Arguments
+getMatrixDiTrMe "$OPERATION" "$NUMARG" "$2"
+getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
+
+# Validate Matrices
+
+# DEBUGGING FOR getMatrix functions
+# echo "Matrix 1:"
+# cat "$MATRIX1"
+# [ "$OPERATION" == "add" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
+# [ "$OPERATION" == "multiply" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
+# echo ""

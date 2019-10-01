@@ -1,0 +1,27 @@
+#!/bin/bash
+
+countTotal=0
+read currentLines file <<< $(wc -l countLines)
+countTotal=$(expr $countTotal - $currentLines)
+
+countLines(){
+	for fileName in *
+	do
+		if [ -d "$fileName" ]
+		then
+			echo "==OPENING DIRECTORY $fileName=="
+			cd $fileName
+			countLines
+			cd ..
+		elif [ -f "$fileName" ]
+		then
+			read numLines file <<< $(wc -l "$fileName")
+			echo "file: $file count: $numLines"
+			countTotal=$(expr $countTotal + $numLines)
+		fi
+	done
+}
+
+countLines
+
+echo "Total Lines: $countTotal"
