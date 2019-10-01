@@ -114,51 +114,61 @@ function _checkMatrix(){
     local currentCols=0
     local numCols=0
     local numRows=0
-    echo "Checking Matrix..."
+
     while read line || [ -n "$line" ]
     do
         # iterate through each item in line
         for item in $line
         do
-            (( currentCols++ ))
+            (( currentCols++ )) # Count Number of Columns
         done
 
         # Check for column mismatch / get dimensions
         if [ "$prevCols" -lt "0" ]
         then
-            prevCols="$currentCols"
+            prevCols="$currentCols" # Set prevCols
+            numCols="$currentCols"  # Set currentCols
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
             exit 7
         fi
-        numCols="$currentCols"
+        
         currentCols=0
         (( numRows++ ))
 
     done < "$1"
-
-    totalRows="$numRows"
-    totalCols="$numCols"
 }
 
 function validateMatrix(){
-    echo "TESTING validateMatrix"
-
     _checkFile "$1"
     _checkMatrix "$1"
 }
 
 function dims() {
-    echo "$totalRows $totalCols"
+    echo "TODO"
 }
 
-NUMARG=$#
-OPERATION=$1
-MATRIX1="./temp/tempMatrix1_$$"
-MATRIX2="./temp/tempMatrix2_$$"
-totalRows=0
-totalCols=0
+function tranpose() {
+    echo "TDOD"
+}
+
+function mean() {
+    echo "TODO"
+}
+
+function add() {
+    echo "TODO"
+}
+
+function multiply() {
+    echo "TODO"
+}
+
+NUMARG=$#                           # Number of Arguments
+OPERATION=$1                        # Operation Called
+MATRIX1="./temp/tempMatrix1_$$"     # Location of Matrix 1
+MATRIX2="./temp/tempMatrix2_$$"     # Location of Matrix 2
 
 # Check for Valid Operations.
 checkOperationValid "$OPERATION"
@@ -175,8 +185,8 @@ getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
 # echo ""
 
 # Check If Matrix/Matrices are Valid
-validateMatrix "$MATRIX1"
 
 # DEBUGGING FOR validateMatrix functions
+validateMatrix "$MATRIX1"
 echo "Total Rows: $totalRows"
 echo "Total Cols: $totalCols"
