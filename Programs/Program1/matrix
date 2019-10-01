@@ -112,8 +112,6 @@ function _checkFile(){
 function _checkMatrix(){
     local prevCols=-1
     local currentCols=0
-    local numCols=0
-    local numRows=0
 
     while read line || [ -n "$line" ]
     do
@@ -127,7 +125,6 @@ function _checkMatrix(){
         if [ "$prevCols" -lt "0" ]
         then
             prevCols="$currentCols" # Set prevCols
-            numCols="$currentCols"  # Set currentCols
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
@@ -135,14 +132,13 @@ function _checkMatrix(){
         fi
         
         currentCols=0
-        (( numRows++ ))
 
     done < "$1"
 }
 
 function validateMatrix(){
-    _checkFile "$1"
-    _checkMatrix "$1"
+    _checkFile "$1"     # Make sure file is valid
+    _checkMatrix "$1"   # Make sure matrix is valid
 }
 
 function dims() {
@@ -188,5 +184,3 @@ getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
 
 # DEBUGGING FOR validateMatrix functions
 validateMatrix "$MATRIX1"
-echo "Total Rows: $totalRows"
-echo "Total Cols: $totalCols"
