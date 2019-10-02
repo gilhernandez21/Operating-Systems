@@ -109,6 +109,15 @@ function _checkFile(){
     fi
 }
 
+function _checkInteger(){
+    local intCheck='^-?[0-9]+$'
+    if ! [[ $1 =~ $intCheck ]]
+    then
+        echo "Error: Matrix Invalid. Non-integer '$1' detected." >&2
+        exit 7
+    fi
+}
+
 function _checkMatrix(){
     local prevCols=-1
     local currentCols=0
@@ -118,6 +127,7 @@ function _checkMatrix(){
         # iterate through each item in line
         for item in $line
         do
+            _checkInteger "$item"
             (( currentCols++ )) # Count Number of Columns
         done
 
@@ -128,7 +138,7 @@ function _checkMatrix(){
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
-            exit 7
+            exit 8
         fi
         
         currentCols=0
