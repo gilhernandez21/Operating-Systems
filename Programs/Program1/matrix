@@ -88,7 +88,7 @@ function _checkEmpty(){
     # SYNOPSIS
     #   _checkFile INPUT
     # DESCRIPTION
-    #   Exits script if input is empty
+    #   Exits script if input is empty.
 
     if [ "$1" == "" ]
     then
@@ -143,6 +143,12 @@ function clearTemp(){
 }
 
 function dims(){
+    # NAME
+    #   dims - gets the dimensions of the matrix
+    # SYNOPSIS
+    #   dims MATRIX
+    # DESCRIPTION
+    #   Prints the number of rows followed by the number of columns, then exits the program.
     local numCols=0
     local numRows=0
 
