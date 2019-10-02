@@ -136,7 +136,7 @@ function _checkMatrix(){
 
         # Iterate through each item in line
         for item in $line
-        do
+        do 
             _checkInteger "$item"   # Check if $item is not an integer
             (( currentCols++ ))     # Count Number of Columns
         done
