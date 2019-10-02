@@ -113,8 +113,16 @@ function _checkInteger(){
     local intCheck='^-?[0-9]+$'
     if ! [[ $1 =~ $intCheck ]]
     then
-        echo "Error: Matrix Invalid. Non-integer '$1' detected." >&2
+        echo "ERROR: Matrix Invalid. Non-integer '$1' detected." >&2
         exit 7
+    fi
+}
+
+function _checkEmptyLine(){
+    if [ "$1" == "" ]
+    then
+        echo "ERROR: Matrix Invalid. Empty line detected." >&2
+        exit 8
     fi
 }
 
@@ -122,23 +130,25 @@ function _checkMatrix(){
     local prevCols=-1
     local currentCols=0
 
-    while read line || [ -n "$line" ]
+    while read line
     do
-        # iterate through each item in line
+        _checkEmptyLine "$line"     # Check if there is an empty line
+
+        # Iterate through each item in line
         for item in $line
         do
-            _checkInteger "$item"
-            (( currentCols++ )) # Count Number of Columns
+            _checkInteger "$item"   # Check if $item is not an integer
+            (( currentCols++ ))     # Count Number of Columns
         done
 
-        # Check for column mismatch / get dimensions
+        # Check for column mismatch
         if [ "$prevCols" -lt "0" ]
         then
             prevCols="$currentCols" # Set prevCols
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
-            exit 8
+            exit 9
         fi
         
         currentCols=0
