@@ -10,7 +10,7 @@ function checkOperationValid(){
 
     if [ "$1" == "" ]
     then
-        echo "ERROR: Missing Arguments" >&2
+        echo "ERROR: Missing Arguments. Use dims, transpose, mean, add, or multiply" >&2
         exit 1
     elif [ "$1" != "dims" ] && [ "$1" != "transpose" ] && [ "$1" != "mean" ] && [ "$1" != "add" ] && [ "$1" != "multiply" ]
     then
@@ -19,16 +19,15 @@ function checkOperationValid(){
     fi
 }
 
-# TODO: DELETE tempMatrix files if they exist
-function getMatrixDiTrMe(){
+function getMatrix(){
     # NAME
-    #   getMatrixDiTrMe - gets Matrix used for dims, transpose, or mean functions from
-    #   either a file or from stdin.
-    #   USES GLOBAL VARIABLE MATRIX1
+    #   getMatrix - gets and sets Matrix from a file. If the operation is
+    #   dims, transpose, or mean, the function also check stdin.
+    #   USES GLOBAL VARIABLES MATRIX1 and MATRIX2
     # SYNOPSIS
-    #   getMatrixDiTrMe OPERATION NUMBER_OF_ARGUMENTS MATRIX
+    #   getMatrix OPERATION NUMBER_OF_ARGUMENTS MATRIX1 MATRIX2
     # DESCRIPTION
-    #   Exits script if there are too many arguments.
+    #   Exits script if there in an invalid number of many arguments.
 
     if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
     then
@@ -42,45 +41,19 @@ function getMatrixDiTrMe(){
             # echo "Setting MATRIX1 to $3..." #DEBUGGING
             MATRIX1="$3"
         else
-            echo "ERROR: Too Many Arguments" >&2
+            echo "ERROR: Argument Miscount. Usage: 'matrix $1 [MATRIX]'" >&2
             exit 3
         fi
-    fi
-}
-
-# TODO: FIGURE OUT CASE WHERE NO ARGUMENTS
-# TODO: DELETE tempMatrix files if they exist
-function getMatrixAdMu(){
-    # NAME
-    #   getMatrixAdMu - gets Matrices used for add or multiply functions from
-    #   either a file or from stdin.
-    #   USES GLOBAL VARIABLES MATRIX1 AND MATRIX2
-    # SYNOPSIS
-    #   getMatrixAdMu OPERATION NUMBER_OF_ARGUMENTS MATRIX_1 MATRIX_2
-    # DESCRIPTION
-    #   Exits script if there are too many arguments
-
-    if [ "$1" == "add" ] || [ "$1" == "multiply" ]
+    elif [ "$1" == "add" ] || [ "$1" == "multiply" ]
     then
-        if [ "$2" = "1" ] #FIXME
+        if [ "$2" = "3" ]
         then
-            echo "FIXME - TOO FEW ARGUMENTS FOR getMatrixAdMu" >&2
-            exit 50
-        elif [ "$2" = "2" ]
-        then
-            # echo "Piping into $MATRIX1..." #DEBUGGING
-            mkdir -p temp
-            cat > "$MATRIX1"
-            # echo "Setting MATRIX2 to $3"  #DEBUGGING
-            MATRIX2="$3"
-        elif [ "$2" = "3" ]
-        then
-            # echo "Setting MATRIX1 to $3..."  #DEBUGGING
-            MATRIX1="$3"
-            # echo "Setting MATRIX2 to $4..." #DEBUGGING
-            MATRIX2="$4"
+            # echo "Setting MATRIX1 to $3...." #DEBUGGING
+            MATRIX1=$3
+            # echo "Setting MATRIX2 to $4...." #DEBUGGING
+            MATRIX2=$4
         else
-            echo "ERROR: Too Many Arguments" >&2
+            echo "ERROR: Argument Miscount. Usage: 'matrix' $1 MATRIX_LEFT MATRIX_RIGHT." >&2
             exit 3
         fi
     fi
@@ -88,97 +61,141 @@ function getMatrixAdMu(){
 
 function _checkFile(){
     # NAME
-
+    #   _checkFile - checks if matrix file is usable
     # SYNOPSIS
-
+    #   _checkFile MATRIX
     # DESCRIPTION
+    #   Exits script if file is nonexistant, unreadable, or empty.
 
-
-    if [ ! -e "$1" ] # Check if file exists
+    if [ ! -e "$1" ]    # Check if file exists
     then
         echo "ERROR: File '$1' does not exist." >&2
         exit 4
-    elif [ ! -r "$1" ] # Check if file is readable
+    elif [ ! -r "$1" ]  # Check if file is readable
     then
         echo "ERROR: File '$1' is not readable." >&2
         exit 5
-    elif [ ! -s "$1" ] # Check if file is empty
+    elif [ ! -s "$1" ]  # Check if file is empty
     then
         echo "ERROR: File '$1' is empty." >&2
         exit 6
     fi
 }
 
-function _checkInteger(){
-    local intCheck='^-?[0-9]+$'
-    if ! [[ $1 =~ $intCheck ]]
+function _checkEmpty(){
+    # NAME
+    #   _checkEmpty - check if arugment is empty
+    # SYNOPSIS
+    #   _checkFile INPUT
+    # DESCRIPTION
+    #   Exits script if input is empty
+
+    if [ "$1" == "" ]
     then
-        echo "ERROR: Matrix Invalid. Non-integer '$1' detected." >&2
+        echo "ERROR: Matrix Invalid. Empty line detected." >&2
         exit 7
     fi
 }
 
-function _checkEmptyLine(){
-    if [ "$1" == "" ]
+function _checkInteger(){
+    #TO USE
+    local intPattern='^-?[0-9]+$'
+    if ! [[ $1 =~ $intPattern ]]
     then
-        echo "ERROR: Matrix Invalid. Empty line detected." >&2
+        echo "ERROR: Matrix Invalid. Non-integer '$1' detected." >&2
         exit 8
     fi
 }
 
 function _checkMatrix(){
-    local prevCols=-1
-    local currentCols=0
-
+    #TODO
     while read line
     do
-        _checkEmptyLine "$line"     # Check if there is an empty line
-
-        # Iterate through each item in line
-        for item in $line
-        do 
-            _checkInteger "$item"   # Check if $item is not an integer
-            (( currentCols++ ))     # Count Number of Columns
-        done
-
-        # Check for column mismatch
-        if [ "$prevCols" -lt "0" ]
-        then
-            prevCols="$currentCols" # Set prevCols
-        elif [ "$prevCols" -ne "$currentCols" ]
-        then
-            echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
-            exit 9
-        fi
-        
-        currentCols=0
+        _checkEmpty "$line"     # check if line is empty
 
     done < "$1"
 }
 
-function validateMatrix(){
-    _checkFile "$1"     # Make sure file is valid
-    _checkMatrix "$1"   # Make sure matrix is valid
+function checkMatrixFile(){
+    # NAME
+    #   _checkMatrixFile - checks if matrix files used as arguments are both
+    #   usable, and have valid matrices within them.
+    # SYNOPSIS
+    #   _checkMatrixFile OPERATION MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Exits if there any problems with matrix files
+    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
+    then
+        _checkFile "$2"
+        _checkMatrix "$2"
+    elif [ "$1" == "add" ] || [ "$1" == "multiply" ]
+    then
+        _checkFile "$2"
+        _checkMatrix "$2"
+        _checkFile "$3"
+        _checkMatrix "$3"
+    fi
 }
 
-function dims() {
+function clearTemp(){
+    # Empty and Delete the Temp Folder
     echo "TODO"
 }
 
-function tranpose() {
-    echo "TDOD"
+function dims(){
+    local numCols=0
+    local numRows=0
+
+    while read line
+    do
+        if [ "$numCols" -eq "0" ]
+        then
+            for item in $line
+            do
+                (( numCols++ ))
+            done
+        fi
+
+        (( numRows++ ))
+    done < "$1"
+
+    echo "$numRows $numCols"
+    exit 0
 }
 
-function mean() {
+function transpose(){
     echo "TODO"
 }
 
-function add() {
+function mean(){
     echo "TODO"
 }
 
-function multiply() {
+function add(){
     echo "TODO"
+}
+
+function multiply(){
+    echo "TODO"
+}
+
+function action(){
+    if [ "$1" == "dims" ]
+    then
+        dims "$2"
+    elif [ "$1" == "transpose" ]
+    then
+        transpose "$2"
+    elif [ "$1" == "mean" ]
+    then
+        mean "$2"
+    elif [ "$1" == "add" ]
+    then
+        add "$2" "$3"
+    elif [ "$1" == "multiply" ]
+    then
+        mean "$2" "$3"
+    fi
 }
 
 NUMARG=$#                           # Number of Arguments
@@ -186,21 +203,8 @@ OPERATION=$1                        # Operation Called
 MATRIX1="./temp/tempMatrix1_$$"     # Location of Matrix 1
 MATRIX2="./temp/tempMatrix2_$$"     # Location of Matrix 2
 
-# Check for Valid Operations.
-checkOperationValid "$OPERATION"
+checkOperationValid "$OPERATION"                    # Check for Valid Operations.
+getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
+checkMatrixFile "$OPERATION" "$MATRIX1" "$MATRIX2"  # Check Matrix Validity
 
-# Get Matrices / Check Number of Arguments
-getMatrixDiTrMe "$OPERATION" "$NUMARG" "$2"
-getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
-
-# DEBUGGING FOR getMatrix functions
-# echo "Matrix 1:"
-# cat "$MATRIX1"
-# [ "$OPERATION" == "add" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
-# [ "$OPERATION" == "multiply" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
-# echo ""
-
-# Check If Matrix/Matrices are Valid
-
-# DEBUGGING FOR validateMatrix functions
-validateMatrix "$MATRIX1"
+action "$OPERATION" "$MATRIX1" "$MATRIX2"           # Do Action based on Operation
