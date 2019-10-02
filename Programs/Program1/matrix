@@ -96,15 +96,15 @@ function _checkFile(){
 
     if [ ! -e "$1" ] # Check if file exists
     then
-        echo "ERROR: '$1' does not exist." >&2
+        echo "ERROR: File '$1' does not exist." >&2
         exit 4
     elif [ ! -r "$1" ] # Check if file is readable
     then
-        echo "ERROR: '$1' is not readable." >&2
+        echo "ERROR: File '$1' is not readable." >&2
         exit 5
     elif [ ! -s "$1" ] # Check if file is empty
     then
-        echo "ERROR: '$1' is empty." >&2
+        echo "ERROR: File '$1' is empty." >&2
         exit 6
     fi
 }
