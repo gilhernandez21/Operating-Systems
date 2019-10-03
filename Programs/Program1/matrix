@@ -103,7 +103,7 @@ function _checkTab(){
     # SYNOPSIS
     #   _checkTab MATRIX
     # DESCRIPTION
-    #   Exits script if MATRIX has a trailling tab character
+    #   Exits script if MATRIX has a trailing tab character
 
     if grep -q $'.\t$' "$1"
     then
@@ -113,7 +113,12 @@ function _checkTab(){
 }
 
 function _checkNonInt(){
-    #TO USE
+    # NAME
+    #   _checkNonInt - Check if there are non-integers in matrix
+    # SYNOPSIS
+    #   _checkNonInt MATRIX
+    # DESCRIPTION
+    #   Exits script if non-integer value found
     if grep -q $'[^0-9\t\-]' "$1" # Check for non-integer characters, excluding tab and -
     then
         echo "ERROR: Matrix Invalid. Non-integer detected." >&2
@@ -127,6 +132,12 @@ function _checkNonInt(){
 }
 
 function _checkSkipped(){
+    # NAME
+    #   _checkSkipped - checks for two tab characters
+    # SYNOPSIS
+    #   _checkTab MATRIX
+    # DESCRIPTION
+    #   Exits script if two sequential tabs found
     if grep -q $'\t\t' "$1"     # Check for two tabs
     then
         echo "ERROR: Matrix Invalid. Skipped Value Detected." >&2
@@ -135,6 +146,12 @@ function _checkSkipped(){
 }
 
 function _checkMismatch(){
+    # NAME
+    #   _checkMismatch - checks for unbalanced matrices
+    # SYNOPSIS
+    #   _checkMismatch MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX is unbalanced
     local prevCols=-1
     local currentCols=0
 
@@ -162,7 +179,13 @@ function _checkMismatch(){
 }
 
 function _checkMatrix(){
-    #TODO
+    # NAME
+    #   _checkMatrix - makes sure matrix doesn't have empty lines, trailing
+    #   tabs, non-integers, black elements, sequential tabs, or is unbalanced.
+    # SYNOPSIS
+    #   _checkMatrix MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX is unbalanced
     _checkEmpty "$1"    # Check for empty lines
     _checkTab "$1"      # Check for final entry followed by a tab character.
     _checkNonInt "$1"   # Check for matrix with non-integer elements or blank elements.
