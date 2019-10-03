@@ -134,12 +134,40 @@ function _checkSkipped(){
     fi
 }
 
+function _checkMismatch(){
+    local prevCols=-1
+    local currentCols=0
+
+    while read line
+    do
+        # Iterate through each item in line
+        for item in $line
+        do 
+            (( currentCols++ ))     # Count Number of Columns
+        done
+
+        # Check for column mismatch
+        if [ "$prevCols" -lt "0" ]
+        then
+            prevCols="$currentCols" # Set prevCols
+        elif [ "$prevCols" -ne "$currentCols" ]
+        then
+            echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
+            exit 9
+        fi
+        
+        currentCols=0
+
+    done < "$1"
+}
+
 function _checkMatrix(){
     #TODO
     _checkEmpty "$1"    # Check for empty lines
     _checkTab "$1"      # Check for final entry followed by a tab character.
-    _checkNonInt "$1"   # Check for matrix with non-integer elements or blank elements
-    _checkSkipped "$1"  # Check for two tab characters in a row
+    _checkNonInt "$1"   # Check for matrix with non-integer elements or blank elements.
+    _checkSkipped "$1"  # Check for two tab characters in a row.
+    _checkMismatch "$1" # Check for same # of columsn for each row.
 }
 
 function checkMatrixFile(){
@@ -187,7 +215,6 @@ function dims(){
     done < "$1"
 
     echo "$numRows $numCols"
-    exit 0
 }
 
 function transpose(){
@@ -223,6 +250,7 @@ function action(){
     then
         mean "$2" "$3"
     fi
+    exit 0
 }
 
 function clearTemp(){
