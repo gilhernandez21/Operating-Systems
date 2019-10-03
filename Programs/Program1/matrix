@@ -86,34 +86,60 @@ function _checkEmpty(){
     # NAME
     #   _checkEmpty - check if arugment is empty
     # SYNOPSIS
-    #   _checkFile INPUT
+    #   _checkFile MATRIX
     # DESCRIPTION
     #   Exits script if input is empty.
 
-    if [ "$1" == "" ]
+    if grep -q "^$" "$1"
     then
         echo "ERROR: Matrix Invalid. Empty line detected." >&2
         exit 7
     fi
 }
 
-function _checkInteger(){
-    #TO USE
-    local intPattern='^-?[0-9]+$'
-    if ! [[ $1 =~ $intPattern ]]
+function _checkTab(){
+    # NAME
+    #   _checkTab - check if arugment has a trailing tab character
+    # SYNOPSIS
+    #   _checkTab MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX has a trailling tab character
+
+    if grep -q $'.\t$' "$1"
     then
-        echo "ERROR: Matrix Invalid. Non-integer '$1' detected." >&2
+        echo "ERROR: Matrix Invalid. Trailing tab detected." >&2
         exit 8
+    fi
+}
+
+function _checkNonInt(){
+    #TO USE
+    if grep -q $'[^0-9\t\-]' "$1" # Check for non-integer characters, excluding tab and -
+    then
+        echo "ERROR: Matrix Invalid. Non-integer detected." >&2
+        exit 9
+    fi
+    if grep -q $'\(\-[^0-9]\|[^0-9]$\)' "$1"    # Check '-' characters
+    then
+        echo "ERROR: Matrix Invalid. Non-integer detected." >&2
+        exit 9
+    fi
+}
+
+function _checkSkipped(){
+    if grep -q $'\t\t' "$1"     # Check for two tabs
+    then
+        echo "ERROR: Matrix Invalid. Skipped Value Detected." >&2
+        exit 10
     fi
 }
 
 function _checkMatrix(){
     #TODO
-    while read line
-    do
-        _checkEmpty "$line"     # check if line is empty
-
-    done < "$1"
+    _checkEmpty "$1"    # Check for empty lines
+    _checkTab "$1"      # Check for final entry followed by a tab character.
+    _checkNonInt "$1"   # Check for matrix with non-integer elements or blank elements
+    _checkSkipped "$1"  # Check for two tab characters in a row
 }
 
 function checkMatrixFile(){
@@ -135,11 +161,6 @@ function checkMatrixFile(){
         _checkFile "$3"
         _checkMatrix "$3"
     fi
-}
-
-function clearTemp(){
-    # Empty and Delete the Temp Folder
-    echo "TODO"
 }
 
 function dims(){
@@ -202,6 +223,11 @@ function action(){
     then
         mean "$2" "$3"
     fi
+}
+
+function clearTemp(){
+    # Empty and Delete the Temp Folder
+    echo "TODO"
 }
 
 NUMARG=$#                           # Number of Arguments
