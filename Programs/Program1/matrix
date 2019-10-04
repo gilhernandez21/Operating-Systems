@@ -241,10 +241,10 @@ function dims(){
 }
 
 function transpose(){
-    output="_transposeOutput$$"                 # File with Transposed Matrix
-    colCut='2'                                  # Location of Number of Columns
-    cols=$(dims "$1" | cut -d ' ' -f "$colCut") # Get the Number of Columns
-    curCol='0'                                  # Column Counter
+    local output="_transposeOutput$$"                 # File with Transposed Matrix
+    local colCut='2'                                  # Location of Number of Columns
+    local cols=$(dims "$1" | cut -d ' ' -f "$colCut") # Get the Number of Columns
+    local curCol='0'                                  # Column Counter
 
     while [[ $curCol -lt $cols ]]
     do
