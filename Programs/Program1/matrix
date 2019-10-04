@@ -277,7 +277,7 @@ function _average(){
     local sum="$1"
     local count="$2"
     # (a + (b/2)*( (a>0)*2-1 )) / b
-    local val=$(( sum > 0 ))          # a > 0
+    local val=$(( sum > 0 ))    # a > 0
     val=$(( val * 2 - 1 ))      # (a > 0) * 2 - 1
     val=$(( count / 2 * val ))  # (b / 2) * ((a > 0) * 2 - 1)   
     val=$(( sum + val ))        # (a + (b / 2) * ((a > 0) * 2 - 1))
@@ -292,7 +292,7 @@ function mean(){
     #   _mean MATRIX
     # DESCRIPTION
     #   Prints the mean of each column
-    local output="_meanOut$$"                           # File with Transposed Matrix
+    local output="_meanOut$$"                           # File with Mean Matrix
     local colCut='2'                                    # Location of Number of Columns
     local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
     local curCol='0'                                    # Column Counter
@@ -315,7 +315,7 @@ function mean(){
         sum=0
     done
 
-    # Display the Output
+    # Display Mean Matrix
     while read line || [ -n "$line" ]
     do
         echo "$line"
@@ -350,12 +350,43 @@ function add(){
     # DESCRIPTION
     #   Exits the program if matrix dimensions are not equal.
     _checkEqual "$1" "$2"           # Ensure dimensions of both matrices are the same.
-    local output="_addOut$$"                            # File with Transposed Matrix
-    local colCut='2'                                    # Location of Number of Columns
-    local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
-    local curCol='0'                                    # Column Counter
 
+    local output="_addOut$$"                # File with Transposed Matrix
+    local rowCut='1'                        # Location of Number of Rows
+    local colCut='2'                        # Location of Number of Columns
+    local dimensions=$( dims "$1" )         # Dimensions of Matrix
+    local cols=$( echo "$dimensions" | cut -d ' ' -f "$colCut" )    # Number of Columns
+    local rows=$( echo "$dimensions" | cut -d ' ' -f "$rowCut" )    # Number of Rows
+    curCol="0"  # Column Counter
+    curRow="0"  # Row Counter
 
+    while [[ $curRow -lt $rows ]]
+    do
+        (( curRow++ ))
+        while [[ $curCol -lt $cols ]]
+        do
+            (( curCol++ ))
+            # Get the value at current Row and current Column in Matrix 1
+            local val1=$(cut -f $curCol $1 | head -n $curRow | tail -n "1")
+            # Get the value at current Row and current Column in Matrix 2
+            local val2=$(cut -f $curCol $2 | head -n $curRow | tail -n "1")
+            # Calculate the Sum
+            local sum=$(( $val1 + $val2 ))
+            # Put Value into Output
+            echo -ne "$sum\t" >> $output
+        done
+        echo "" >> $output
+        curCol="0"
+    done
+
+    # Display Add Matrix
+    while read line || [ -n "$line" ]
+    do
+        echo "$line"
+    done < $output
+
+    # Delete Output File
+    rm $output
 }
 
 function multiply(){
