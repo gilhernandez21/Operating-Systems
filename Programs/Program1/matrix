@@ -29,7 +29,7 @@ function getMatrix(){
     # DESCRIPTION
     #   Exits script if there in an invalid number of many arguments.
 
-    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
+    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "mean" ]
     then
         if [ "$2" = "1" ]
         then
@@ -241,10 +241,10 @@ function dims(){
 }
 
 function transpose(){
-    local output="_transposeOutput$$"                 # File with Transposed Matrix
-    local colCut='2'                                  # Location of Number of Columns
-    local cols=$(dims "$1" | cut -d ' ' -f "$colCut") # Get the Number of Columns
-    local curCol='0'                                  # Column Counter
+    local output="_transposeOut$$"                      # File with Transposed Matrix
+    local colCut='2'                                    # Location of Number of Columns
+    local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
+    local curCol='0'                                    # Column Counter
 
     while [[ $curCol -lt $cols ]]
     do
@@ -253,7 +253,11 @@ function transpose(){
         echo "" >> $output
     done
 
-    cat "$output"   # Display Transposed Matrix
+    # Display Transposed Matrix
+    while read line || [ -n "$line" ]; do
+        echo "$line"
+    done < $output
+ 
     rm "$output"    # Delete Output File
 }
 
@@ -270,7 +274,34 @@ function _average(){
 }
 
 function mean(){
-    echo "TODO"
+    # local output="_meanOut$$"                           # File with Transposed Matrix
+    # local colCut='2'                                    # Location of Number of Columns
+    # local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
+    # local curCol='0'  
+
+    # while [[ $curCol -lt $cols ]]
+    # do
+    #     (( curCol++ ))
+    #     local count=0
+    #     local sum=0
+    #     for value in $(cut -f $curCol $1 | tr '\n' '\t')
+    #     do
+    #         (( count++ ))
+    #         (( sum += value ))
+    #     done
+
+    #     _average $sum $count | tr '\n' '\t' >> $output
+
+    #     count=0
+    #     sum=0
+    # done
+
+    # while read line || [ -n "$line" ]
+    # do
+    #     echo "$line"
+    # done < $output
+
+    # rm $output
 }
 
 function add(){
