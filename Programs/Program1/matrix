@@ -220,7 +220,7 @@ function dims(){
     # SYNOPSIS
     #   dims MATRIX
     # DESCRIPTION
-    #   Prints the number of rows followed by the number of columns, then exits the program.
+    #   Prints the number of rows followed by the number of columns.
     local numCols=0
     local numRows=0
 
@@ -241,6 +241,12 @@ function dims(){
 }
 
 function transpose(){
+    # NAME
+    #   transpose - reflects the elements of of the matrix along the diagonal
+    # SYNOPSIS
+    #   transpose MATRIX
+    # DESCRIPTION
+    #   Prints the transposed matrix
     local output="_transposeOut$$"                      # File with Transposed Matrix
     local colCut='2'                                    # Location of Number of Columns
     local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
@@ -262,6 +268,12 @@ function transpose(){
 }
 
 function _average(){
+    # NAME
+    #   _average - Calculates the Average, rounded to nearest integer.
+    # SYNOPSIS
+    #   _average SUM COUNT
+    # DESCRIPTION
+    #   Prints the average based on the sum and the count of numbers.
     local sum="$1"
     local count="$2"
     # (a + (b/2)*( (a>0)*2-1 )) / b
@@ -274,12 +286,18 @@ function _average(){
 }
 
 function mean(){
+    # NAME
+    #   _mean - Determines the mean for each column, rounded to the nearest integer.
+    # SYNOPSIS
+    #   _mean MATRIX
+    # DESCRIPTION
+    #   Prints the mean of each column
     local output="_meanOut$$"                           # File with Transposed Matrix
     local colCut='2'                                    # Location of Number of Columns
     local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
-    local curCol='0'  
+    local curCol='0'                                    # Column Counter
 
-    while [[ $curCol -lt $cols ]]
+    while [[ $curCol -lt $cols ]]   # Get the count and sum of each column
     do
         (( curCol++ ))
         local count=0
@@ -290,17 +308,20 @@ function mean(){
             (( sum += value ))
         done
 
-        _average $sum $count | tr '\n' '\t' >> $output
+        _average $sum $count | tr '\n' '\t' >> $output  # Calculate the mean
 
+        # Reset values for next column
         count=0
         sum=0
     done
 
+    # Display the Output
     while read line || [ -n "$line" ]
     do
         echo "$line"
     done < $output
 
+    # Delete Output File
     rm $output
 }
 
