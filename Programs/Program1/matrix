@@ -241,7 +241,20 @@ function dims(){
 }
 
 function transpose(){
-    echo "TODO"
+    output="_transposeOutput$$"                 # File with Transposed Matrix
+    colCut='2'                                  # Location of Number of Columns
+    cols=$(dims "$1" | cut -d ' ' -f "$colCut") # Get the Number of Columns
+    curCol='0'                                  # Column Counter
+
+    while [[ $curCol -lt $cols ]]
+    do
+        (( curCol++ ))
+        cut -f $curCol $1 | tr '\n' '\t' >> $output
+        echo "" >> $output
+    done
+
+    cat "$output"   # Display Transposed Matrix
+    rm "$output"    # Delete Output File
 }
 
 function mean(){
@@ -283,8 +296,8 @@ function clearTemp(){
 
 NUMARG=$#                           # Number of Arguments
 OPERATION=$1                        # Operation Called
-MATRIX1="./temp/tempMatrix1_$$"     # Location of Matrix 1
-MATRIX2="./temp/tempMatrix2_$$"     # Location of Matrix 2
+MATRIX1="./temp/_tempMatrix1_$$"     # Location of Matrix 1
+MATRIX2="./temp/_tempMatrix2_$$"     # Location of Matrix 2
 
 checkOperationValid "$OPERATION"                    # Check for Valid Operations.
 getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
