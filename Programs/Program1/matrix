@@ -325,8 +325,37 @@ function mean(){
     rm $output
 }
 
+function _checkEqual(){
+     # NAME
+    #   _checkEqual - checks to see if both matrices have equal dimensions
+    # SYNOPSIS
+    #   _checkEqual MATRIX_1 MATRIX_2
+    # DESCRIPTION
+    #   Exits the program if matrix dimensions are not equal.
+    local mat1=$( dims $1 ) # get dimensions of matrix 1
+    local mat2=$( dims $2 ) # get dimensions of matrix 2
+
+    if [ "$mat1" != "$mat2" ]
+    then
+        echo "ERROR: Matrix Dimensions Unequal!" >&2
+        exit 11
+    fi
+}
+
 function add(){
-    echo "TODO"
+    # NAME
+    #   add - 
+    # SYNOPSIS
+    #   add MATRIX_1 MATRIX_2
+    # DESCRIPTION
+    #   Exits the program if matrix dimensions are not equal.
+    _checkEqual "$1" "$2"           # Ensure dimensions of both matrices are the same.
+    local output="_addOut$$"                            # File with Transposed Matrix
+    local colCut='2'                                    # Location of Number of Columns
+    local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
+    local curCol='0'                                    # Column Counter
+
+
 }
 
 function multiply(){
