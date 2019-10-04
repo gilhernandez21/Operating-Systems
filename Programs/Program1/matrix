@@ -257,6 +257,18 @@ function transpose(){
     rm "$output"    # Delete Output File
 }
 
+function _average(){
+    local sum="$1"
+    local count="$2"
+    # (a + (b/2)*( (a>0)*2-1 )) / b
+    local val=$(( sum > 0 ))          # a > 0
+    val=$(( val * 2 - 1 ))      # (a > 0) * 2 - 1
+    val=$(( count / 2 * val ))  # (b / 2) * ((a > 0) * 2 - 1)   
+    val=$(( sum + val ))        # (a + (b / 2) * ((a > 0) * 2 - 1))
+    val=$(( val / count ))      # (a + (b / 2) * ((a > 0) * 2 - 1)) / b
+    echo "$val"
+}
+
 function mean(){
     echo "TODO"
 }
