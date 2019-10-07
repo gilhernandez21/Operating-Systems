@@ -344,14 +344,14 @@ function _checkEqual(){
 
 function add(){
     # NAME
-    #   add - 
+    #   add - adds two matrices together
     # SYNOPSIS
     #   add MATRIX_1 MATRIX_2
     # DESCRIPTION
     #   Exits the program if matrix dimensions are not equal.
     _checkEqual "$1" "$2"           # Ensure dimensions of both matrices are the same.
 
-    local output="_addOut$$"                # File with Transposed Matrix
+    local output="_addOut$$"                # File with Add Matrix
     trap "rm -f $output" EXIT               # Deletes file on exit
 
     local rowCut='1'                        # Location of Number of Rows
@@ -389,12 +389,21 @@ function add(){
 }
 
 function _checkDefined(){
+    # NAME
+    #   _checkDefined - Checks to see if Matrix Multiplication result is defined
+    # SYNOPSIS
+    #   _checkDefined MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Exits the program if Matrix Mulplicatoin result is not defined.
+
+    # Location of Rows and Columns in Output
     local rowCut="1"
     local colCut="2"
 
-    local mat1Cols=$(dims "$1" | cut -d ' ' -f "$colCut")
-    local mat2Rows=$(dims "$2" | cut -d ' ' -f "$rowCut")
+    local mat1Cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Number of Columns of Matrix 1
+    local mat2Rows=$(dims "$2" | cut -d ' ' -f "$rowCut")   # Number of Columns of Matrix 2
 
+    # If not the same, matrices are invalid and exit the program.
     if [[ $mat1Cols -ne $mat2Rows ]]
     then
         echo "ERROR: Matrices Invalid. Matrix Dimensions Invalid." >&2
@@ -403,28 +412,42 @@ function _checkDefined(){
 }
 
 function _getDimensions(){
+    # NAME
+    #   _getDimensions - Gets the Number of Rows and Columns for Each Matrix
+    # SYNOPSIS
+    #   getDimensions MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Prints the Number of Rows of Matrix 1, Number of Columns of Matrix 1,
+    #   Number of Rows of Matrix 2, and Number of Columns of Matrix 2
 
+    # Location of Rows and Columns in Output
     local rowCut="1"
     local colCut="2"
-
+    # Dimensions of Matrices
     local mat1Dims=$(dims "$1")
     local mat2Dims=$(dims "$2")
-
+    # Specific Number of Rows and Columns for each matrix
     local mat1Rows=$(echo "$mat1Dims" | cut -d ' ' -f "$rowCut")
     local mat1Cols=$(echo "$mat1Dims" | cut -d ' ' -f "$colCut")
     local mat2Rows=$(echo "$mat2Dims" | cut -d ' ' -f "$rowCut")
     local mat2Cols=$(echo "$mat2Dims" | cut -d ' ' -f "$colCut")
-
+    # Print the Data
     echo "$mat1Rows $mat1Cols $mat2Rows $mat2Cols"
-
 }
 
 function multiply(){
+    # NAME
+    #   multiply - multiplies two matrices together
+    # SYNOPSIS
+    #   multiply MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   If matrix multiplication not defined, exits the program. Otherwise, prints
+    #   the resulting matrix
 
-    _checkDefined "$1" "$2"
+    _checkDefined "$1" "$2"             # Make sure Matrices are Valid for Function
 
-    local output="_multiplyOut$$"
-    trap "rm -f $output" EXIT               # Deletes file on exit
+    local output="_multiplyOut$$"       # File with Multiply Matrix
+    trap "rm -f $output" EXIT           # Deletes file on exit
 
     local dimensions=$(_getDimensions "$1" "$2")                # Dimensions of Matrices
     local mat1Rows=$(echo "$dimensions" | cut -d ' ' -f 1)      # Number of Rows of Matrix 1
@@ -472,6 +495,17 @@ function multiply(){
 }
 
 function action(){
+    # NAME
+    #   action - perform function called by user
+    # SYNOPSIS
+    #   action OPERATION MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Based on user input, the function either gets the dimensions of a matrix,
+    #   transposes a matrix, calculates the mean of a matrix, adds two matrices
+    #   together, or multiplies two matrices together. Furthermore, these actions
+    #   print their results and exit the program if there is an error. Finally,
+    #   the program exits properly.
+
     if [ "$1" == "dims" ]
     then
         dims "$2"
@@ -491,13 +525,16 @@ function action(){
     exit 0
 }
 
+# VARIABLES
 NUMARG=$#                                   # Number of Arguments
 OPERATION=$1                                # Operation Called
 MATRIX1="./_tempMatrix1_$$"                 # Location of Matrix 1
 MATRIX2="./_tempMatrix2_$$"                 # Location of Matrix 2
 
+# INPUT VALIDATION
 checkOperationValid "$OPERATION"                    # Check for Valid Operations.
 getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
 checkMatrixFile "$OPERATION" "$MATRIX1" "$MATRIX2"  # Check Matrix Validity
 
+# PERFORM ACTION
 action "$OPERATION" "$MATRIX1" "$MATRIX2"           # Do Action based on Operation
