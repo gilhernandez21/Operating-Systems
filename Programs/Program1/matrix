@@ -34,8 +34,8 @@ function getMatrix(){
         if [ "$2" = "1" ]
         then
             # echo "Piping into $MATRIX1..." #DEBUGGING
-            mkdir -p temp
             cat > "$MATRIX1"
+            trap "rm -f $MATRIX1" EXIT      # Deletes file on exit
         elif [ "$2" = "2" ]
         then
             # echo "Setting MATRIX1 to $3..." #DEBUGGING
@@ -247,7 +247,10 @@ function transpose(){
     #   transpose MATRIX
     # DESCRIPTION
     #   Prints the transposed matrix
+
     local output="_transposeOut$$"                      # File with Transposed Matrix
+    trap "rm -f $output" EXIT                           # Deletes file on exit
+
     local colCut='2'                                    # Location of Number of Columns
     local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
     local curCol='0'                                    # Column Counter
@@ -263,8 +266,6 @@ function transpose(){
     while read line || [ -n "$line" ]; do
         echo "$line"
     done < $output
- 
-    rm "$output"    # Delete Output File
 }
 
 function _average(){
@@ -293,6 +294,8 @@ function mean(){
     # DESCRIPTION
     #   Prints the mean of each column
     local output="_meanOut$$"                           # File with Mean Matrix
+    trap "rm -f $output" EXIT                           # Deletes file on exit
+
     local colCut='2'                                    # Location of Number of Columns
     local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
     local curCol='0'                                    # Column Counter
@@ -320,9 +323,6 @@ function mean(){
     do
         echo "$line"
     done < $output
-
-    # Delete Output File
-    rm $output
 }
 
 function _checkEqual(){
@@ -352,6 +352,8 @@ function add(){
     _checkEqual "$1" "$2"           # Ensure dimensions of both matrices are the same.
 
     local output="_addOut$$"                # File with Transposed Matrix
+    trap "rm -f $output" EXIT               # Deletes file on exit
+
     local rowCut='1'                        # Location of Number of Rows
     local colCut='2'                        # Location of Number of Columns
     local dimensions=$( dims "$1" )         # Dimensions of Matrix
@@ -384,9 +386,6 @@ function add(){
     do
         echo "$line"
     done < $output
-
-    # Delete Output File
-    rm $output
 }
 
 function _checkDefined(){
@@ -425,12 +424,14 @@ function multiply(){
     _checkDefined "$1" "$2"
 
     local output="_multiplyOut$$"
+    trap "rm -f $output" EXIT               # Deletes file on exit
 
-    local dimensions=$(_getDimensions "$1" "$2")
-    local mat1Rows=$(echo "$dimensions" | cut -d ' ' -f 1)
-    local matColsRows=$(echo "$dimensions" | cut -d ' ' -f 2)
-    local mat2Cols=$(echo "$dimensions" | cut -d ' ' -f 4)
+    local dimensions=$(_getDimensions "$1" "$2")                # Dimensions of Matrices
+    local mat1Rows=$(echo "$dimensions" | cut -d ' ' -f 1)      # Number of Rows of Matrix 1
+    local matColsRows=$(echo "$dimensions" | cut -d ' ' -f 2)   # Number of M1 Cols and M2 Rows
+    local mat2Cols=$(echo "$dimensions" | cut -d ' ' -f 4)      # Number of Cols of Matrix 2
 
+    # Counters
     local curMat1Row="0"
     local curMat2Cols="0"
     local curColsRows="0"
@@ -468,9 +469,6 @@ function multiply(){
     do
         echo "$line"
     done < $output
-
-    # Delete Output File
-    rm $output
 }
 
 function action(){
@@ -493,15 +491,10 @@ function action(){
     exit 0
 }
 
-function clearTemp(){
-    # Empty and Delete the Temp Folder
-    echo "TODO"
-}
-
-NUMARG=$#                           # Number of Arguments
-OPERATION=$1                        # Operation Called
-MATRIX1="./temp$$/_tempMatrix1_$$"  # Location of Matrix 1
-MATRIX2="./temp$$/_tempMatrix2_$$"  # Location of Matrix 2
+NUMARG=$#                                   # Number of Arguments
+OPERATION=$1                                # Operation Called
+MATRIX1="./_tempMatrix1_$$"                 # Location of Matrix 1
+MATRIX2="./_tempMatrix2_$$"                 # Location of Matrix 2
 
 checkOperationValid "$OPERATION"                    # Check for Valid Operations.
 getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
