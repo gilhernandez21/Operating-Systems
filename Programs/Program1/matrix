@@ -357,8 +357,8 @@ function add(){
     local dimensions=$( dims "$1" )         # Dimensions of Matrix
     local cols=$( echo "$dimensions" | cut -d ' ' -f "$colCut" )    # Number of Columns
     local rows=$( echo "$dimensions" | cut -d ' ' -f "$rowCut" )    # Number of Rows
-    curCol="0"  # Column Counter
-    curRow="0"  # Row Counter
+    local curCol="0"  # Column Counter
+    local curRow="0"  # Row Counter
 
     while [[ $curRow -lt $rows ]]
     do
@@ -389,8 +389,88 @@ function add(){
     rm $output
 }
 
+function _checkDefined(){
+    local rowCut="1"
+    local colCut="2"
+
+    local mat1Cols=$(dims "$1" | cut -d ' ' -f "$colCut")
+    local mat2Rows=$(dims "$2" | cut -d ' ' -f "$rowCut")
+
+    if [[ $mat1Cols -ne $mat2Rows ]]
+    then
+        echo "ERROR: Matrices Invalid. Matrix Dimensions Invalid." >&2
+        exit 12
+    fi
+}
+
+function _getDimensions(){
+
+    local rowCut="1"
+    local colCut="2"
+
+    local mat1Dims=$(dims "$1")
+    local mat2Dims=$(dims "$2")
+
+    local mat1Rows=$(echo "$mat1Dims" | cut -d ' ' -f "$rowCut")
+    local mat1Cols=$(echo "$mat1Dims" | cut -d ' ' -f "$colCut")
+    local mat2Rows=$(echo "$mat2Dims" | cut -d ' ' -f "$rowCut")
+    local mat2Cols=$(echo "$mat2Dims" | cut -d ' ' -f "$colCut")
+
+    echo "$mat1Rows $mat1Cols $mat2Rows $mat2Cols"
+
+}
+
 function multiply(){
-    echo "TODO"
+
+    _checkDefined "$1" "$2"
+
+    local output="_multiplyOut$$"
+
+    local dimensions=$(_getDimensions "$1" "$2")
+    local mat1Rows=$(echo "$dimensions" | cut -d ' ' -f 1)
+    local matColsRows=$(echo "$dimensions" | cut -d ' ' -f 2)
+    local mat2Cols=$(echo "$dimensions" | cut -d ' ' -f 4)
+
+    local curMat1Row="0"
+    local curMat2Cols="0"
+    local curColsRows="0"
+
+    # Go through each row of matrix 1
+    while [[ $curMat1Row -lt $mat1Rows ]]
+    do
+        (( curMat1Row++ ))
+        # head -n $curMat1Row "$1" | tail -n "1"    # DEBUGGING
+        # Go through each column of matrix 2
+        while [[ $curMat2Cols -lt $mat2Cols ]]
+        do
+            (( curMat2Cols++ ))
+            local sum="0"
+            # cut -f $curMat2Cols "$2"              # DEBUGGING
+            # Calculate Products and Add Together
+            while [[ $curColsRows -lt $matColsRows ]]
+            do
+                (( curColsRows++ ))
+                mat1Val=$(cut -f $curColsRows $1 | head -n $curMat1Row | tail -n 1)
+                mat2Val=$(cut -f $curMat2Cols $2 | head -n $curColsRows | tail -n 1)
+                local product=$(( mat1Val * mat2Val ))
+                sum=$(( sum + product ))
+                # echo "$mat1Val * $mat2Val = $product"     # DEBUGGING
+            done
+            echo -ne "$sum\t" >> $output
+            curColsRows="0"
+        done
+        echo "" >> $output
+        curMat2Cols="0"
+    done
+
+    # Display Multiply Matrix
+    while read line || [ -n "$line" ]
+    do
+        echo "$line"
+    done < $output
+
+    # Delete Output File
+    rm $output
 }
 
 function action(){
@@ -408,7 +488,7 @@ function action(){
         add "$2" "$3"
     elif [ "$1" == "multiply" ]
     then
-        mean "$2" "$3"
+        multiply "$2" "$3"
     fi
     exit 0
 }
@@ -420,8 +500,8 @@ function clearTemp(){
 
 NUMARG=$#                           # Number of Arguments
 OPERATION=$1                        # Operation Called
-MATRIX1="./temp/_tempMatrix1_$$"     # Location of Matrix 1
-MATRIX2="./temp/_tempMatrix2_$$"     # Location of Matrix 2
+MATRIX1="./temp$$/_tempMatrix1_$$"  # Location of Matrix 1
+MATRIX2="./temp$$/_tempMatrix2_$$"  # Location of Matrix 2
 
 checkOperationValid "$OPERATION"                    # Check for Valid Operations.
 getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
