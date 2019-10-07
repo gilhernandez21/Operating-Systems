@@ -1,5 +1,37 @@
 #!/bin/bash
 
+# NAME
+#   matrix
+# DESCRIPTION
+#   Created for CS344 - Operating Systems @ Oregon State University
+#   Program 1 - matrices
+#   This script performs various operations on matrices and outputs the results.
+# AUTHOR
+#   Herbert Diaz (diazh@oregonstate.edu)
+# SYNOPSIS
+#   matrix OPERATION MATRIX1 MATRIX2
+# OPERATIONS
+#	dims 		- Get the Dimensions of a Matrix
+#	transpose	- Transpose a Matrix
+#	mean		- Calculate the Mean of Each Column of a Matrix
+#	add			- Add Two Matrices Together
+#	multiply	- Multiply Two matrices Together
+# EXIT STATUSES
+#   0   - Program Ran without Errors
+# 	1	- No Operation was called
+# 	2	- Invalid Operation was called
+# 	3	- Invalid Number of Arguments Called
+# 	4	- File Doesn't Exist
+# 	5	- File is Unreadable
+# 	6	- File is Empty
+# 	7	- Matrix has Empty Line
+# 	8	- Matrix has Trailing Tab
+# 	9	- Matrix has Non-Integer
+# 	10	- Matrix has Skipped(Blank) Value
+# 	11	- Matrix is Unbalanced
+# 	12	- Matrices in Add Function have Different Dimensions
+#   13  - Matrices in Multiply Function Would Have an Undefined Result
+
 function checkOperationValid(){
     # NAME
     #   checkOperationValid - check if argument is a valid operation
@@ -170,7 +202,7 @@ function _checkMismatch(){
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
-            exit 9
+            exit 11
         fi
         
         currentCols=0
@@ -338,7 +370,7 @@ function _checkEqual(){
     if [ "$mat1" != "$mat2" ]
     then
         echo "ERROR: Matrix Dimensions Unequal!" >&2
-        exit 11
+        exit 12
     fi
 }
 
@@ -407,7 +439,7 @@ function _checkDefined(){
     if [[ $mat1Cols -ne $mat2Rows ]]
     then
         echo "ERROR: Matrices Invalid. Matrix Dimensions Invalid." >&2
-        exit 12
+        exit 13
     fi
 }
 
@@ -526,10 +558,10 @@ function action(){
 }
 
 # VARIABLES
-NUMARG=$#                                   # Number of Arguments
-OPERATION=$1                                # Operation Called
-MATRIX1="./_tempMatrix1_$$"                 # Location of Matrix 1
-MATRIX2="./_tempMatrix2_$$"                 # Location of Matrix 2
+NUMARG=$#                                           # Number of Arguments
+OPERATION=$1                                        # Operation Called
+MATRIX1="./_tempMatrix1_$$"                         # Location of Matrix 1
+MATRIX2="./_tempMatrix2_$$"                         # Location of Matrix 2
 
 # INPUT VALIDATION
 checkOperationValid "$OPERATION"                    # Check for Valid Operations.
