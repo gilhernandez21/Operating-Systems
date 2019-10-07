@@ -1,5 +1,37 @@
 #!/bin/bash
 
+# NAME
+#   matrix
+# DESCRIPTION
+#   Created for CS344 - Operating Systems @ Oregon State University
+#   Program 1 - matrices
+#   This script performs various operations on matrices and outputs the results.
+# AUTHOR
+#   Herbert Diaz (diazh@oregonstate.edu)
+# SYNOPSIS
+#   matrix OPERATION MATRIX1 MATRIX2
+# OPERATIONS
+#	dims 		- Get the Dimensions of a Matrix
+#	transpose	- Transpose a Matrix
+#	mean		- Calculate the Mean of Each Column of a Matrix
+#	add			- Add Two Matrices Together
+#	multiply	- Multiply Two matrices Together
+# EXIT STATUSES
+#   0   - Program Ran without Errors
+# 	1	- No Operation was called
+# 	2	- Invalid Operation was called
+# 	3	- Invalid Number of Arguments Called
+# 	4	- File Doesn't Exist
+# 	5	- File is Unreadable
+# 	6	- File is Empty
+# 	7	- Matrix has Empty Line
+# 	8	- Matrix has Trailing Tab
+# 	9	- Matrix has Non-Integer
+# 	10	- Matrix has Skipped(Blank) Value
+# 	11	- Matrix is Unbalanced
+# 	12	- Matrices in Add Function have Different Dimensions
+#   13  - Matrices in Multiply Function Would Have an Undefined Result
+
 function checkOperationValid(){
     # NAME
     #   checkOperationValid - check if argument is a valid operation
@@ -10,7 +42,7 @@ function checkOperationValid(){
 
     if [ "$1" == "" ]
     then
-        echo "ERROR: Missing Arguments" >&2
+        echo "ERROR: Missing Arguments. Use dims, transpose, mean, add, or multiply" >&2
         exit 1
     elif [ "$1" != "dims" ] && [ "$1" != "transpose" ] && [ "$1" != "mean" ] && [ "$1" != "add" ] && [ "$1" != "multiply" ]
     then
@@ -19,68 +51,41 @@ function checkOperationValid(){
     fi
 }
 
-# TODO: DELETE tempMatrix files if they exist
-function getMatrixDiTrMe(){
+function getMatrix(){
     # NAME
-    #   getMatrixDiTrMe - gets Matrix used for dims, transpose, or mean functions from
-    #   either a file or from stdin.
-    #   USES GLOBAL VARIABLE MATRIX1
+    #   getMatrix - gets and sets Matrix from a file. If the operation is
+    #   dims, transpose, or mean, the function also check stdin.
+    #   USES GLOBAL VARIABLES MATRIX1 and MATRIX2
     # SYNOPSIS
-    #   getMatrixDiTrMe OPERATION NUMBER_OF_ARGUMENTS MATRIX
+    #   getMatrix OPERATION NUMBER_OF_ARGUMENTS MATRIX1 MATRIX2
     # DESCRIPTION
-    #   Exits script if there are too many arguments.
+    #   Exits script if there in an invalid number of many arguments.
 
-    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
+    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "mean" ]
     then
         if [ "$2" = "1" ]
         then
             # echo "Piping into $MATRIX1..." #DEBUGGING
-            mkdir -p temp
             cat > "$MATRIX1"
+            trap "rm -f $MATRIX1" EXIT      # Deletes file on exit
         elif [ "$2" = "2" ]
         then
             # echo "Setting MATRIX1 to $3..." #DEBUGGING
             MATRIX1="$3"
         else
-            echo "ERROR: Too Many Arguments" >&2
+            echo "ERROR: Argument Miscount. Usage: 'matrix $1 [MATRIX]'" >&2
             exit 3
         fi
-    fi
-}
-
-# TODO: FIGURE OUT CASE WHERE NO ARGUMENTS
-# TODO: DELETE tempMatrix files if they exist
-function getMatrixAdMu(){
-    # NAME
-    #   getMatrixAdMu - gets Matrices used for add or multiply functions from
-    #   either a file or from stdin.
-    #   USES GLOBAL VARIABLES MATRIX1 AND MATRIX2
-    # SYNOPSIS
-    #   getMatrixAdMu OPERATION NUMBER_OF_ARGUMENTS MATRIX_1 MATRIX_2
-    # DESCRIPTION
-    #   Exits script if there are too many arguments
-
-    if [ "$1" == "add" ] || [ "$1" == "multiply" ]
+    elif [ "$1" == "add" ] || [ "$1" == "multiply" ]
     then
-        if [ "$2" = "1" ] #FIXME
+        if [ "$2" = "3" ]
         then
-            echo "FIXME - TOO FEW ARGUMENTS FOR getMatrixAdMu" >&2
-            exit 50
-        elif [ "$2" = "2" ]
-        then
-            # echo "Piping into $MATRIX1..." #DEBUGGING
-            mkdir -p temp
-            cat > "$MATRIX1"
-            # echo "Setting MATRIX2 to $3"  #DEBUGGING
-            MATRIX2="$3"
-        elif [ "$2" = "3" ]
-        then
-            # echo "Setting MATRIX1 to $3..."  #DEBUGGING
-            MATRIX1="$3"
-            # echo "Setting MATRIX2 to $4..." #DEBUGGING
-            MATRIX2="$4"
+            # echo "Setting MATRIX1 to $3...." #DEBUGGING
+            MATRIX1=$3
+            # echo "Setting MATRIX2 to $4...." #DEBUGGING
+            MATRIX2=$4
         else
-            echo "ERROR: Too Many Arguments" >&2
+            echo "ERROR: Argument Miscount. Usage: 'matrix' $1 MATRIX_LEFT MATRIX_RIGHT." >&2
             exit 3
         fi
     fi
@@ -88,56 +93,105 @@ function getMatrixAdMu(){
 
 function _checkFile(){
     # NAME
-
+    #   _checkFile - checks if matrix file is usable
     # SYNOPSIS
-
+    #   _checkFile MATRIX
     # DESCRIPTION
+    #   Exits script if file is nonexistant, unreadable, or empty.
 
-
-    if [ ! -e "$1" ] # Check if file exists
+    if [ ! -e "$1" ]    # Check if file exists
     then
         echo "ERROR: File '$1' does not exist." >&2
         exit 4
-    elif [ ! -r "$1" ] # Check if file is readable
+    elif [ ! -r "$1" ]  # Check if file is readable
     then
         echo "ERROR: File '$1' is not readable." >&2
         exit 5
-    elif [ ! -s "$1" ] # Check if file is empty
+    elif [ ! -s "$1" ]  # Check if file is empty
     then
         echo "ERROR: File '$1' is empty." >&2
         exit 6
     fi
 }
 
-function _checkInteger(){
-    local intCheck='^-?[0-9]+$'
-    if ! [[ $1 =~ $intCheck ]]
+function _checkEmpty(){
+    # NAME
+    #   _checkEmpty - check if arugment is empty
+    # SYNOPSIS
+    #   _checkFile MATRIX
+    # DESCRIPTION
+    #   Exits script if input is empty.
+
+    if grep -q "^$" "$1"
     then
-        echo "ERROR: Matrix Invalid. Non-integer '$1' detected." >&2
+        echo "ERROR: Matrix Invalid. Empty line detected." >&2
         exit 7
     fi
 }
 
-function _checkEmptyLine(){
-    if [ "$1" == "" ]
+function _checkTab(){
+    # NAME
+    #   _checkTab - check if arugment has a trailing tab character
+    # SYNOPSIS
+    #   _checkTab MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX has a trailing tab character
+
+    if grep -q $'.\t$' "$1"
     then
-        echo "ERROR: Matrix Invalid. Empty line detected." >&2
+        echo "ERROR: Matrix Invalid. Trailing tab detected." >&2
         exit 8
     fi
 }
 
-function _checkMatrix(){
+function _checkNonInt(){
+    # NAME
+    #   _checkNonInt - Check if there are non-integers in matrix
+    # SYNOPSIS
+    #   _checkNonInt MATRIX
+    # DESCRIPTION
+    #   Exits script if non-integer value found
+    if grep -q $'[^0-9\t\-]' "$1" # Check for non-integer characters, excluding tab and -
+    then
+        echo "ERROR: Matrix Invalid. Non-integer detected." >&2
+        exit 9
+    fi
+    if grep -q $'\(\-[^0-9]\|[^0-9]$\)' "$1"    # Check '-' characters
+    then
+        echo "ERROR: Matrix Invalid. Non-integer detected." >&2
+        exit 9
+    fi
+}
+
+function _checkSkipped(){
+    # NAME
+    #   _checkSkipped - checks for two tab characters
+    # SYNOPSIS
+    #   _checkTab MATRIX
+    # DESCRIPTION
+    #   Exits script if two sequential tabs found
+    if grep -q $'\t\t' "$1"     # Check for two tabs
+    then
+        echo "ERROR: Matrix Invalid. Skipped Value Detected." >&2
+        exit 10
+    fi
+}
+
+function _checkMismatch(){
+    # NAME
+    #   _checkMismatch - checks for unbalanced matrices
+    # SYNOPSIS
+    #   _checkMismatch MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX is unbalanced
     local prevCols=-1
     local currentCols=0
 
     while read line
     do
-        _checkEmptyLine "$line"     # Check if there is an empty line
-
         # Iterate through each item in line
         for item in $line
         do 
-            _checkInteger "$item"   # Check if $item is not an integer
             (( currentCols++ ))     # Count Number of Columns
         done
 
@@ -148,7 +202,7 @@ function _checkMatrix(){
         elif [ "$prevCols" -ne "$currentCols" ]
         then
             echo "ERROR: Matrix Invalid. Number of Column Mismatch." >&2
-            exit 9
+            exit 11
         fi
         
         currentCols=0
@@ -156,51 +210,363 @@ function _checkMatrix(){
     done < "$1"
 }
 
-function validateMatrix(){
-    _checkFile "$1"     # Make sure file is valid
-    _checkMatrix "$1"   # Make sure matrix is valid
+function _checkMatrix(){
+    # NAME
+    #   _checkMatrix - makes sure matrix doesn't have empty lines, trailing
+    #   tabs, non-integers, black elements, sequential tabs, or is unbalanced.
+    # SYNOPSIS
+    #   _checkMatrix MATRIX
+    # DESCRIPTION
+    #   Exits script if MATRIX is unbalanced
+    _checkEmpty "$1"    # Check for empty lines
+    _checkTab "$1"      # Check for final entry followed by a tab character.
+    _checkNonInt "$1"   # Check for matrix with non-integer elements or blank elements.
+    _checkSkipped "$1"  # Check for two tab characters in a row.
+    _checkMismatch "$1" # Check for same # of columsn for each row.
 }
 
-function dims() {
-    echo "TODO"
+function checkMatrixFile(){
+    # NAME
+    #   _checkMatrixFile - checks if matrix files used as arguments are both
+    #   usable, and have valid matrices within them.
+    # SYNOPSIS
+    #   _checkMatrixFile OPERATION MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Exits if there any problems with matrix files
+    if [ "$1" == "dims" ] || [ "$1" == "transpose" ] || [ "$1" == "Mean" ]
+    then
+        _checkFile "$2"
+        _checkMatrix "$2"
+    elif [ "$1" == "add" ] || [ "$1" == "multiply" ]
+    then
+        _checkFile "$2"
+        _checkMatrix "$2"
+        _checkFile "$3"
+        _checkMatrix "$3"
+    fi
 }
 
-function tranpose() {
-    echo "TDOD"
+function dims(){
+    # NAME
+    #   dims - gets the dimensions of the matrix
+    # SYNOPSIS
+    #   dims MATRIX
+    # DESCRIPTION
+    #   Prints the number of rows followed by the number of columns.
+    local numCols=0
+    local numRows=0
+
+    while read line
+    do
+        if [ "$numCols" -eq "0" ]
+        then
+            for item in $line
+            do
+                (( numCols++ ))
+            done
+        fi
+
+        (( numRows++ ))
+    done < "$1"
+
+    echo "$numRows $numCols"
 }
 
-function mean() {
-    echo "TODO"
+function transpose(){
+    # NAME
+    #   transpose - reflects the elements of of the matrix along the diagonal
+    # SYNOPSIS
+    #   transpose MATRIX
+    # DESCRIPTION
+    #   Prints the transposed matrix
+
+    local output="_transposeOut$$"                      # File with Transposed Matrix
+    trap "rm -f $output" EXIT                           # Deletes file on exit
+
+    local colCut='2'                                    # Location of Number of Columns
+    local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
+    local curCol='0'                                    # Column Counter
+
+    while [[ $curCol -lt $cols ]]
+    do
+        (( curCol++ ))
+        cut -f $curCol $1 | tr '\n' '\t' >> $output
+        echo "" >> $output
+    done
+
+    # Display Transposed Matrix
+    while read line || [ -n "$line" ]; do
+        echo "$line"
+    done < $output
 }
 
-function add() {
-    echo "TODO"
+function _average(){
+    # NAME
+    #   _average - Calculates the Average, rounded to nearest integer.
+    # SYNOPSIS
+    #   _average SUM COUNT
+    # DESCRIPTION
+    #   Prints the average based on the sum and the count of numbers.
+    local sum="$1"
+    local count="$2"
+    # (a + (b/2)*( (a>0)*2-1 )) / b
+    local val=$(( sum > 0 ))    # a > 0
+    val=$(( val * 2 - 1 ))      # (a > 0) * 2 - 1
+    val=$(( count / 2 * val ))  # (b / 2) * ((a > 0) * 2 - 1)   
+    val=$(( sum + val ))        # (a + (b / 2) * ((a > 0) * 2 - 1))
+    val=$(( val / count ))      # (a + (b / 2) * ((a > 0) * 2 - 1)) / b
+    echo "$val"
 }
 
-function multiply() {
-    echo "TODO"
+function mean(){
+    # NAME
+    #   _mean - Determines the mean for each column, rounded to the nearest integer.
+    # SYNOPSIS
+    #   _mean MATRIX
+    # DESCRIPTION
+    #   Prints the mean of each column
+    local output="_meanOut$$"                           # File with Mean Matrix
+    trap "rm -f $output" EXIT                           # Deletes file on exit
+
+    local colCut='2'                                    # Location of Number of Columns
+    local cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Get the Number of Columns
+    local curCol='0'                                    # Column Counter
+
+    while [[ $curCol -lt $cols ]]   # Get the count and sum of each column
+    do
+        (( curCol++ ))
+        local count=0
+        local sum=0
+        for value in $(cut -f $curCol $1 | tr '\n' '\t')
+        do
+            (( count++ ))
+            (( sum += value ))
+        done
+
+        _average $sum $count | tr '\n' '\t' >> $output  # Calculate the mean
+
+        # Reset values for next column
+        count=0
+        sum=0
+    done
+
+    # Display Mean Matrix
+    while read line || [ -n "$line" ]
+    do
+        echo "$line"
+    done < $output
 }
 
-NUMARG=$#                           # Number of Arguments
-OPERATION=$1                        # Operation Called
-MATRIX1="./temp/tempMatrix1_$$"     # Location of Matrix 1
-MATRIX2="./temp/tempMatrix2_$$"     # Location of Matrix 2
+function _checkEqual(){
+     # NAME
+    #   _checkEqual - checks to see if both matrices have equal dimensions
+    # SYNOPSIS
+    #   _checkEqual MATRIX_1 MATRIX_2
+    # DESCRIPTION
+    #   Exits the program if matrix dimensions are not equal.
+    local mat1=$( dims $1 ) # get dimensions of matrix 1
+    local mat2=$( dims $2 ) # get dimensions of matrix 2
 
-# Check for Valid Operations.
-checkOperationValid "$OPERATION"
+    if [ "$mat1" != "$mat2" ]
+    then
+        echo "ERROR: Matrix Dimensions Unequal!" >&2
+        exit 12
+    fi
+}
 
-# Get Matrices / Check Number of Arguments
-getMatrixDiTrMe "$OPERATION" "$NUMARG" "$2"
-getMatrixAdMu "$OPERATION" "$NUMARG" "$2" "$3"
+function add(){
+    # NAME
+    #   add - adds two matrices together
+    # SYNOPSIS
+    #   add MATRIX_1 MATRIX_2
+    # DESCRIPTION
+    #   Exits the program if matrix dimensions are not equal.
+    _checkEqual "$1" "$2"           # Ensure dimensions of both matrices are the same.
 
-# DEBUGGING FOR getMatrix functions
-# echo "Matrix 1:"
-# cat "$MATRIX1"
-# [ "$OPERATION" == "add" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
-# [ "$OPERATION" == "multiply" ] && echo -e "\nMatrix 2:" && cat "$MATRIX2"
-# echo ""
+    local output="_addOut$$"                # File with Add Matrix
+    trap "rm -f $output" EXIT               # Deletes file on exit
 
-# Check If Matrix/Matrices are Valid
+    local rowCut='1'                        # Location of Number of Rows
+    local colCut='2'                        # Location of Number of Columns
+    local dimensions=$( dims "$1" )         # Dimensions of Matrix
+    local cols=$( echo "$dimensions" | cut -d ' ' -f "$colCut" )    # Number of Columns
+    local rows=$( echo "$dimensions" | cut -d ' ' -f "$rowCut" )    # Number of Rows
+    local curCol="0"  # Column Counter
+    local curRow="0"  # Row Counter
 
-# DEBUGGING FOR validateMatrix functions
-validateMatrix "$MATRIX1"
+    while [[ $curRow -lt $rows ]]
+    do
+        (( curRow++ ))
+        while [[ $curCol -lt $cols ]]
+        do
+            (( curCol++ ))
+            # Get the value at current Row and current Column in Matrix 1
+            local val1=$(cut -f $curCol $1 | head -n $curRow | tail -n "1")
+            # Get the value at current Row and current Column in Matrix 2
+            local val2=$(cut -f $curCol $2 | head -n $curRow | tail -n "1")
+            # Calculate the Sum
+            local sum=$(( $val1 + $val2 ))
+            # Put Value into Output
+            echo -ne "$sum\t" >> $output
+        done
+        echo "" >> $output
+        curCol="0"
+    done
+
+    # Display Add Matrix
+    while read line || [ -n "$line" ]
+    do
+        echo "$line"
+    done < $output
+}
+
+function _checkDefined(){
+    # NAME
+    #   _checkDefined - Checks to see if Matrix Multiplication result is defined
+    # SYNOPSIS
+    #   _checkDefined MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Exits the program if Matrix Mulplicatoin result is not defined.
+
+    # Location of Rows and Columns in Output
+    local rowCut="1"
+    local colCut="2"
+
+    local mat1Cols=$(dims "$1" | cut -d ' ' -f "$colCut")   # Number of Columns of Matrix 1
+    local mat2Rows=$(dims "$2" | cut -d ' ' -f "$rowCut")   # Number of Columns of Matrix 2
+
+    # If not the same, matrices are invalid and exit the program.
+    if [[ $mat1Cols -ne $mat2Rows ]]
+    then
+        echo "ERROR: Matrices Invalid. Matrix Dimensions Invalid." >&2
+        exit 13
+    fi
+}
+
+function _getDimensions(){
+    # NAME
+    #   _getDimensions - Gets the Number of Rows and Columns for Each Matrix
+    # SYNOPSIS
+    #   getDimensions MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Prints the Number of Rows of Matrix 1, Number of Columns of Matrix 1,
+    #   Number of Rows of Matrix 2, and Number of Columns of Matrix 2
+
+    # Location of Rows and Columns in Output
+    local rowCut="1"
+    local colCut="2"
+    # Dimensions of Matrices
+    local mat1Dims=$(dims "$1")
+    local mat2Dims=$(dims "$2")
+    # Specific Number of Rows and Columns for each matrix
+    local mat1Rows=$(echo "$mat1Dims" | cut -d ' ' -f "$rowCut")
+    local mat1Cols=$(echo "$mat1Dims" | cut -d ' ' -f "$colCut")
+    local mat2Rows=$(echo "$mat2Dims" | cut -d ' ' -f "$rowCut")
+    local mat2Cols=$(echo "$mat2Dims" | cut -d ' ' -f "$colCut")
+    # Print the Data
+    echo "$mat1Rows $mat1Cols $mat2Rows $mat2Cols"
+}
+
+function multiply(){
+    # NAME
+    #   multiply - multiplies two matrices together
+    # SYNOPSIS
+    #   multiply MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   If matrix multiplication not defined, exits the program. Otherwise, prints
+    #   the resulting matrix
+
+    _checkDefined "$1" "$2"             # Make sure Matrices are Valid for Function
+
+    local output="_multiplyOut$$"       # File with Multiply Matrix
+    trap "rm -f $output" EXIT           # Deletes file on exit
+
+    local dimensions=$(_getDimensions "$1" "$2")                # Dimensions of Matrices
+    local mat1Rows=$(echo "$dimensions" | cut -d ' ' -f 1)      # Number of Rows of Matrix 1
+    local matColsRows=$(echo "$dimensions" | cut -d ' ' -f 2)   # Number of M1 Cols and M2 Rows
+    local mat2Cols=$(echo "$dimensions" | cut -d ' ' -f 4)      # Number of Cols of Matrix 2
+
+    # Counters
+    local curMat1Row="0"
+    local curMat2Cols="0"
+    local curColsRows="0"
+
+    # Go through each row of matrix 1
+    while [[ $curMat1Row -lt $mat1Rows ]]
+    do
+        (( curMat1Row++ ))
+        # head -n $curMat1Row "$1" | tail -n "1"    # DEBUGGING
+        # Go through each column of matrix 2
+        while [[ $curMat2Cols -lt $mat2Cols ]]
+        do
+            (( curMat2Cols++ ))
+            local sum="0"
+            # cut -f $curMat2Cols "$2"              # DEBUGGING
+            # Calculate Products and Add Together
+            while [[ $curColsRows -lt $matColsRows ]]
+            do
+                (( curColsRows++ ))
+                mat1Val=$(cut -f $curColsRows $1 | head -n $curMat1Row | tail -n 1)
+                mat2Val=$(cut -f $curMat2Cols $2 | head -n $curColsRows | tail -n 1)
+                local product=$(( mat1Val * mat2Val ))
+                sum=$(( sum + product ))
+                # echo "$mat1Val * $mat2Val = $product"     # DEBUGGING
+            done
+            echo -ne "$sum\t" >> $output
+            curColsRows="0"
+        done
+        echo "" >> $output
+        curMat2Cols="0"
+    done
+
+    # Display Multiply Matrix
+    while read line || [ -n "$line" ]
+    do
+        echo "$line"
+    done < $output
+}
+
+function action(){
+    # NAME
+    #   action - perform function called by user
+    # SYNOPSIS
+    #   action OPERATION MATRIX1 MATRIX2
+    # DESCRIPTION
+    #   Based on user input, the function either gets the dimensions of a matrix,
+    #   transposes a matrix, calculates the mean of a matrix, adds two matrices
+    #   together, or multiplies two matrices together. Furthermore, these actions
+    #   print their results and exit the program if there is an error. Finally,
+    #   the program exits properly.
+
+    if [ "$1" == "dims" ]
+    then
+        dims "$2"
+    elif [ "$1" == "transpose" ]
+    then
+        transpose "$2"
+    elif [ "$1" == "mean" ]
+    then
+        mean "$2"
+    elif [ "$1" == "add" ]
+    then
+        add "$2" "$3"
+    elif [ "$1" == "multiply" ]
+    then
+        multiply "$2" "$3"
+    fi
+    exit 0
+}
+
+# VARIABLES
+NUMARG=$#                                           # Number of Arguments
+OPERATION=$1                                        # Operation Called
+MATRIX1="./_tempMatrix1_$$"                         # Location of Matrix 1
+MATRIX2="./_tempMatrix2_$$"                         # Location of Matrix 2
+
+# INPUT VALIDATION
+checkOperationValid "$OPERATION"                    # Check for Valid Operations.
+getMatrix "$OPERATION" "$NUMARG" "$2" "$3"          # Get Matrices / Check Number of Arguments
+checkMatrixFile "$OPERATION" "$MATRIX1" "$MATRIX2"  # Check Matrix Validity
+
+# PERFORM ACTION
+action "$OPERATION" "$MATRIX1" "$MATRIX2"           # Do Action based on Operation
