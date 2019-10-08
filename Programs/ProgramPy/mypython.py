@@ -45,4 +45,4 @@ if __name__ == "__main__":
     # Output Values and Product
     sys.stdout.write(str(value1) + "\n")
     sys.stdout.write(str(value2) + "\n")
-    sys.stdout.write(str(product))
+    sys.stdout.write(str(product) + "\n")
