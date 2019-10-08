@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 '''
     File name: mypython.py
     Author: Herbert Diaz (diazh@oregonstate.edu)
     Date created: 10/08/2019
     Last modified: 10/08/2019
+    Python Version: 3.6.8
     
     Overview: MADE FOR CS 344 - Operating Systems @ Oregon State University
     This script creates 3 files (output1, output2, output3) containing
