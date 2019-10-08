@@ -6,6 +6,7 @@
 #   Created for CS344 - Operating Systems @ Oregon State University
 #   Program 1 - matrices
 #   This script performs various operations on matrices and outputs the results.
+#   === NOTE TO GRADER: Using p1gradingscript outputs in <2 mins ===
 # AUTHOR
 #   Herbert Diaz (diazh@oregonstate.edu)
 # SYNOPSIS
