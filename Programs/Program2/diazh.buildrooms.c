@@ -7,6 +7,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+struct room
+{
+    char* name;
+    char* type;
+    int numConnections;
+    struct room* connections[6];
+};
+
 int makeDirectory(char* directoryName)
 {
     // Make Directory
@@ -44,7 +52,6 @@ int _generateRoomFile(char* directory, char* file, char* input)
 
     return 0;
 }
-
 
 int main()
 {
