@@ -54,7 +54,18 @@ int _generateRoomFile(char* directory, char* file, char* input)
     return 0;
 }
 
+int generateEndIndex(int start, int lastIndex)
+{
+    // Randomly Select Different Index for End
+    int end = start + ((rand() % (lastIndex)) + 1);
 
+    // Make Sure End Index is Within Range of Array
+    if (end >= (lastIndex))
+    {
+        end = end - lastIndex - 1;
+    }
+    return end;
+}
 
 int main()
 {
@@ -69,8 +80,17 @@ int main()
     const int TOTAL_ROOMS = 7;          // Total rooms to generate
     const int TOTAL_ROOM_NAMES = 10;    // Number of Room Names
     const int MAX_ROOM_NAME_CHARS = 8;  // Maximum Number of Characters for Room Name
+    const int MIN_CONNECTIONS = 3;      // Minimum Number of Connections for a Room
+    const int MAX_CONNECTIONS = 6;      // Maximum Number of Connections for a Room
 
+    // Allocate Memory for All the Rooms
     struct Room* rooms = malloc(TOTAL_ROOMS * sizeof(struct Room));
+    // Initialize Number of Connections
+    int count;
+    for (count = 0; count < TOTAL_ROOMS; count++)
+    {
+        rooms[count].numConnections = 0;
+    }
 
     // HARD CODE ROOM NAMES
     char roomNames[TOTAL_ROOM_NAMES][MAX_ROOM_NAME_CHARS];
@@ -89,15 +109,14 @@ int main()
     srand(time(0));     // Seed Random Generator
 
     // Randomly Select 7 of 10 Hard Coded Room Names.
-    int count;
-    int lastIndexNames = TOTAL_ROOM_NAMES - 1;
+    int lastIndexNames = TOTAL_ROOM_NAMES - 1;          // Determine Last Index of Rooms Names Array
     for (count = 0; count < TOTAL_ROOMS; count++)
     {
-        int randIndex = (rand() % (lastIndexNames + 1)); // GENERATE RANDOM NUMBER
+        int randIndex = (rand() % (lastIndexNames + 1));    // Generate Random Index
 
         // printf("Random Number: %d, Room %d: %s\n", randIndex, count + 1, roomNames[randIndex]); // DEBUGGING
 
-        // Store Name in Struct
+        // Store Name in Rooms Array
         strcpy(rooms[count].name, roomNames[randIndex]);
 
         // Swap values from randIndex and lastIndex.
@@ -112,13 +131,8 @@ int main()
 
     // Randomly Determine Indices of Start and End Rooms
     int lastIndexRooms = TOTAL_ROOMS - 1;                           // Last Index of Rooms Array
-    int startIndex = (rand() % (lastIndexRooms + 1));               // Randomly Select Index for Start
-    int endIndex = startIndex + ((rand() % (lastIndexRooms)) + 1);  // Randomly Select Different Index for End
-    // Make Sure End Index is Within Range of Array
-    if (endIndex >= (lastIndexRooms))
-    {
-        endIndex = endIndex - lastIndexRooms - 1;
-    }
+    int startIndex = (rand() % (lastIndexRooms + 1));               // Randomly Select Index for Start Room
+    int endIndex = generateEndIndex(startIndex, lastIndexRooms);    // Randomly Select Index for End Room
 
     // Set Room Types
     for (count = 0; count < TOTAL_ROOMS; count++)
@@ -143,6 +157,7 @@ int main()
         // View Room Names
         printf("==ROOM %d:==\n", count + 1);
         printf("ROOM NAME: %s\n", rooms[count].name);
+        printf("NUM CONNECTIONS: %d\n", rooms[count].numConnections);
         printf("ROOM TYPE: %s\n", rooms[count].type);
     }
 
