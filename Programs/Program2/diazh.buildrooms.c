@@ -16,56 +16,10 @@ struct Room
     struct room* connections[6];    // THE CONNECTED ROOMS
 };
 
-int makeDirectory(char* directoryName)
-{
-    // Make Directory
-    int result = mkdir(directoryName, 0755);
-
-    // Check for Failure
-    if (result != 0)
-    {
-        fprintf(stderr, "ERROR: Failed to Make Directory. \'mkdir()\' returned: %d", result);
-        exit(1);
-    }
-    
-    return 0;
-}
-
-int _generateRoomFile(char* directory, char* file, char* input)
-{
-    // generate location of file
-    char location[64];
-    sprintf(location, "./%s/%s", directory, file);
-
-    // open file
-    int fileDescriptor = open(location, O_WRONLY | O_TRUNC | O_CREAT, 0600);
-
-    if (fileDescriptor < 0)
-    {
-        fprintf(stderr, "ERROR: Failed to Make File '%s'.", file);
-        exit(2);
-    }
-
-    ssize_t nwritten = write(fileDescriptor, input, strlen(input) * sizeof(char));
-
-    // close file
-    close(fileDescriptor);
-
-    return 0;
-}
-
-int generateEndIndex(int start, int lastIndex)
-{
-    // Randomly Select Different Index for End
-    int end = start + ((rand() % (lastIndex)) + 1);
-
-    // Make Sure End Index is Within Range of Array
-    if (end >= (lastIndex))
-    {
-        end = end - lastIndex - 1;
-    }
-    return end;
-}
+int makeDirectory(char* directoryName);
+int _generateRoomFile(char* directory, char* file, char* input);
+int generateEndIndex(int start, int lastIndex);
+void printRoom(struct Room room);
 
 int main()
 {
@@ -156,12 +110,68 @@ int main()
     {   
         // View Room Names
         printf("==ROOM %d:==\n", count + 1);
-        printf("ROOM NAME: %s\n", rooms[count].name);
-        printf("NUM CONNECTIONS: %d\n", rooms[count].numConnections);
-        printf("ROOM TYPE: %s\n", rooms[count].type);
+        printRoom(rooms[count]);
     }
 
     free(rooms);
 
     return 0;
+}
+
+int makeDirectory(char* directoryName)
+{
+    // Make Directory
+    int result = mkdir(directoryName, 0755);
+
+    // Check for Failure
+    if (result != 0)
+    {
+        fprintf(stderr, "ERROR: Failed to Make Directory. \'mkdir()\' returned: %d", result);
+        exit(1);
+    }
+    
+    return 0;
+}
+
+int _generateRoomFile(char* directory, char* file, char* input)
+{
+    // generate location of file
+    char location[64];
+    sprintf(location, "./%s/%s", directory, file);
+
+    // open file
+    int fileDescriptor = open(location, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+
+    if (fileDescriptor < 0)
+    {
+        fprintf(stderr, "ERROR: Failed to Make File '%s'.", file);
+        exit(2);
+    }
+
+    ssize_t nwritten = write(fileDescriptor, input, strlen(input) * sizeof(char));
+
+    // close file
+    close(fileDescriptor);
+
+    return 0;
+}
+
+int generateEndIndex(int start, int lastIndex)
+{
+    // Randomly Select Different Index for End
+    int end = start + ((rand() % (lastIndex)) + 1);
+
+    // Make Sure End Index is Within Range of Array
+    if (end >= (lastIndex))
+    {
+        end = end - lastIndex - 1;
+    }
+    return end;
+}
+
+void printRoom(struct Room room)
+{
+    printf("ROOM NAME: %s\n", room.name);
+    printf("NUM CONNECTIONS: %d\n", room.numConnections);
+    printf("ROOM TYPE: %s\n", room.type);
 }
