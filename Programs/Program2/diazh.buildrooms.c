@@ -238,6 +238,7 @@ int generateEndIndex(int start, int lastIndex)
     {
         end = end - lastIndex - 1;
     }
+    
     return end;
 }
 
