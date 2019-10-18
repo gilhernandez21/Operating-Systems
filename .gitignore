@@ -52,6 +52,6 @@ Mkfile.old
 dkms.conf
 
 # PROGRAM 2
-/CS344/Programs/Program2/diazh.buildrooms
-/CS344/Programs/Program2/diazh.adventure
-/CS344/Programs/Program2/diazh.rooms[0-9][0-9][0-9][0-9]/
+CS344/Programs/Program2/diazh.buildrooms
+CS344/Programs/Program2/diazh.adventure
+CS344/Programs/Program2/diazh.rooms[0-9][0-9][0-9][0-9]/
