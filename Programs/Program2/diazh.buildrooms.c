@@ -1,3 +1,15 @@
+/**
+ * Program name:    Program 2 - diazh.buildrooms
+ * Author:          Herbert Diaz
+ * Date created:    10/14/2019
+ * Last modified:   10/18/2019
+ * Description:
+ *      This program randomly generates 7 room files with 3 attributes: the
+ *  room name, the room connections, and the type of the room. The room names
+ *  are randomly selected from a list of 10 hard-coded room names. The room
+ *  connections and room types are also randomly generated.
+**/
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -17,11 +29,12 @@ struct Room
     struct Room* connections[6];    // THE CONNECTED ROOMS
 };
 
-int makeDirectory(char* directoryName);
-int generateRoomFile(char* directory, char* file, char* input);
-int generateEndIndex(int start, int lastIndex);
-void initializeRoomType(struct Room* room, int index, int startIndex, int endIndex);
-void printRoom(struct Room room);
+// Prototypes
+int makeDirectory(char* directoryName);                             // Creates a new directory
+int generateRoomFile(char* directory, char* file, char* input);     // Creates a new room file
+int generateEndIndex(int start, int lastIndex);                     // Determines an ending index
+void initializeRoomType(struct Room* room, int index, int startIndex, int endIndex);    // Sets Room Type
+void printRoom(struct Room room);                                   // Prints room details to stdout
 
 int main()
 {
@@ -109,9 +122,6 @@ int main()
             // Make sure random room is not itself
             if (randRoom != count)
             {
-                // struct Room* room1 = &rooms[count];
-                // int numConnections1 = room1->numConnections;
-
                 // Check to see if random room is not already connected
                 int isValid = 1;
                 int index;
@@ -177,18 +187,20 @@ int main()
         generateRoomFile(directoryName, fileName, typeLine);
     }
 
-    // // DEBUGGING: View Room Information
-    // for (count = 0; count < TOTAL_ROOMS; count++)
-    // {
-    //     printf("==ROOM %d:==\n", rooms[count].id + 1);
-    //     printRoom(rooms[count]);
-    // }
-
     free(rooms);
 
     return 0;
 }
 
+/**
+ * makeDirectory(char*)
+ * Input
+ *  char* directoryName - the name of the directory to be made
+ * Output
+ *  int - 0 if successful, otherwise exits with 1;
+ * Description
+ *  This function creates a directory
+**/
 int makeDirectory(char* directoryName)
 {
     // Make Directory
@@ -204,6 +216,17 @@ int makeDirectory(char* directoryName)
     return 0;
 }
 
+/**
+ * generateRoomFile(char* directory, char* file, char* input)
+ * Input
+ *  char* directory - the directory to place the file into
+ *  char* file - the name of the file to be created
+ *  char* input - the data to write to the file
+ * Output
+ *  int - returns 0 on success, otherwise returns 2 and exits
+ * Description
+ *  creates a room file into a selected directory
+**/
 int generateRoomFile(char* directory, char* file, char* input)
 {
     // generate location of file
@@ -227,6 +250,16 @@ int generateRoomFile(char* directory, char* file, char* input)
     return 0;
 }
 
+/**
+ * generateEndIndex(int start, int lastIndex)
+ * Input
+ *  int start - the current index
+ *  int lastindex - the last possible index of the array
+ * Output
+ *  int - the value where the end index would be
+ * Description
+ *  This function randomly determines where the end index will be.
+**/
 int generateEndIndex(int start, int lastIndex)
 {
     // Randomly Select Different Index for End
@@ -238,10 +271,20 @@ int generateEndIndex(int start, int lastIndex)
     {
         end = end - lastIndex - 1;
     }
-    
+
     return end;
 }
 
+/**
+ * initializeRoomType(sturct Room* room, int index, int startIndex, int endindex)
+ * Input
+ *  struct Room* room - pointer to a room struct to modify
+ *  int index - the current index
+ *  int startIndex - location of the starting index
+ *  int endINdex - location of the ending index
+ * Description
+ *  Sets a Room's type to either START_INDEX, END_INDEX, or MID_INDEX
+**/
 void initializeRoomType(struct Room* room, int index, int startIndex, int endIndex)
 {
     if (index == startIndex)
@@ -258,6 +301,15 @@ void initializeRoomType(struct Room* room, int index, int startIndex, int endInd
     }
 }
 
+/**
+ * printRoom
+ * Input
+ *  struct Room room - the room to be printed
+ * Output
+ *  Sends Room struct's data into stdout
+ * Description
+ *  Prints all relevant data of a Room struct.
+**/
 void printRoom(struct Room room)
 {
     printf("ROOM NAME: %s\n", room.name);
