@@ -18,21 +18,20 @@ struct Room
 };
 
 int makeDirectory(char* directoryName);
-int _generateRoomFile(char* directory, char* file, char* input);
+int generateRoomFile(char* directory, char* file, char* input);
 int generateEndIndex(int start, int lastIndex);
 void initializeRoomType(struct Room* room, int index, int startIndex, int endIndex);
 void printRoom(struct Room room);
-char* roomOoutput(struct Room room);
 
 int main()
 {
-    // // Generate Directory Name
-    // char directoryName[32];
-    // pid_t pid = getpid();
-    // sprintf(directoryName, "diazh.rooms.%d", pid);
+    // Generate Directory Name
+    char directoryName[32];
+    pid_t pid = getpid();
+    sprintf(directoryName, "diazh.rooms.%d", pid);
 
-    // // Make Directory
-    // makeDirectory(directoryName);
+    // Make Directory
+    makeDirectory(directoryName);
 
     const int TOTAL_ROOMS = 7;          // Total rooms to generate
     const int TOTAL_ROOM_NAMES = 10;    // Number of Room Names
@@ -143,12 +142,47 @@ int main()
         }
     }
 
-    // DEBUGGING: View Room Information
-    for (count = 0; count < TOTAL_ROOMS; count++)
+    // Write All Rooms into Files
+    for(count = 0; count < TOTAL_ROOMS; count++)
     {
-        printf("==ROOM %d:==\n", rooms[count].id + 1);
-        printRoom(rooms[count]);
+        const int lineLength = 30;
+
+        // Generate File Name
+        char fileName[lineLength];
+        memset(fileName, '\0', lineLength * sizeof(char));
+        sprintf(fileName, "%s.room", rooms[count].name);
+
+        // Create Name Line
+        char nameLine[lineLength];
+        memset(nameLine, '\0', lineLength * sizeof(char));
+        sprintf(nameLine, "ROOM NAME: %s\n", rooms[count].name);
+        generateRoomFile(directoryName, fileName, nameLine);
+
+        // Create Connection Lines
+        int index;
+        for (index = 0; index < rooms[count].numConnections; index++)
+        {
+            struct Room* tempRoom = (rooms[count].connections)[index];
+            char* tempRoomName = tempRoom->name;
+            char connectionLine[lineLength];
+            memset(connectionLine, '\0', lineLength * sizeof(char));
+            sprintf(connectionLine, "CONNECTION %d: %s\n", index + 1, tempRoomName);
+            generateRoomFile(directoryName, fileName, connectionLine);
+        }
+
+        // Create Type Line
+        char typeLine[lineLength];
+        memset(typeLine, '\0', lineLength * sizeof(char));
+        sprintf(typeLine, "ROOM TYPE: %s\n", rooms[count].type);
+        generateRoomFile(directoryName, fileName, typeLine);
     }
+
+    // // DEBUGGING: View Room Information
+    // for (count = 0; count < TOTAL_ROOMS; count++)
+    // {
+    //     printf("==ROOM %d:==\n", rooms[count].id + 1);
+    //     printRoom(rooms[count]);
+    // }
 
     free(rooms);
 
@@ -170,14 +204,14 @@ int makeDirectory(char* directoryName)
     return 0;
 }
 
-int _generateRoomFile(char* directory, char* file, char* input)
+int generateRoomFile(char* directory, char* file, char* input)
 {
     // generate location of file
     char location[64];
     sprintf(location, "./%s/%s", directory, file);
 
     // open file
-    int fileDescriptor = open(location, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+    int fileDescriptor = open(location, O_WRONLY | O_APPEND | O_CREAT, 0600);
 
     if (fileDescriptor < 0)
     {
@@ -196,10 +230,11 @@ int _generateRoomFile(char* directory, char* file, char* input)
 int generateEndIndex(int start, int lastIndex)
 {
     // Randomly Select Different Index for End
-    int end = start + ((rand() % (lastIndex)) + 1);
-
+    int random = (rand() % lastIndex) + 1;
+    int end = start + random;
+    
     // Make Sure End Index is Within Range of Array
-    if (end >= (lastIndex))
+    if (end > lastIndex)
     {
         end = end - lastIndex - 1;
     }
@@ -222,7 +257,6 @@ void initializeRoomType(struct Room* room, int index, int startIndex, int endInd
     }
 }
 
-
 void printRoom(struct Room room)
 {
     printf("ROOM NAME: %s\n", room.name);
@@ -235,9 +269,4 @@ void printRoom(struct Room room)
         printf("CONNECTION %d: %s\n", count + 1, roomName);
     }
     printf("ROOM TYPE: %s\n", room.type);
-}
-
-char* roomOutput(struct Room room)
-{
-    printf("Hello world!");
 }
