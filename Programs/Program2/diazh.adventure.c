@@ -6,6 +6,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+struct Room
+{
+    int id;                         // ID OF THE ROOM
+    char name[8];                   // NAME OF THE ROOM
+    char type[12];                  // TYPE OF ROOM
+    int numConnections;             // NUMBER OF CONNECTIONS TO ROOM
+    struct Room* connections[6];    // THE CONNECTED ROOMS
+};
+
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
 
 int main()
