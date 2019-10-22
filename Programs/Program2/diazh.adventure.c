@@ -14,13 +14,13 @@ struct Room
     char type[12];                  // TYPE OF ROOM
     int numConnections;             // NUMBER OF CONNECTIONS TO ROOM
     struct Room* connections[6];    // THE CONNECTED ROOMS
-    char connectNames[6][8];
+    char _connectNames[6][8];        // 
 };
 
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
 void initializeRooms(struct Room* rooms, int numRooms);
 int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter);
-int setRoomConnections(struct Room* rooms);
+void setRoomConnections(struct Room* rooms, int numRooms);
 int populateRooms(char* directoryName, char* fileType, struct Room* rooms);
 void _printRooms(struct Room* rooms, int numRoms);
 
@@ -42,10 +42,10 @@ int main()
     memset(directoryName, '\0', DIR_NAME_LENGTH * sizeof(char));
     exitStatus = getNewestDirectory(DIRECTORY_PREFIX, directoryName);
 
-    // Store Rooms
+    // Transfer Room Data from Files into Structs
     exitStatus = populateRooms(directoryName, ROOM_FILE_TYPE, rooms);
 
-    _printRooms(rooms, NUM_ROOMS);  // DEBUGGING
+    _printRooms(rooms, NUM_ROOMS);  // DEBUGGING: View Room Info
 
     free(rooms);    // Deallocate Memory
 
@@ -160,7 +160,7 @@ int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter)
         // If the buffer holds a connection, save the name of the connection
         else if (!strcmp(token1, CONN_S))
         {
-            strcpy((rooms[*roomCounter].connectNames)[rooms[*roomCounter].numConnections], token3);
+            strcpy((rooms[*roomCounter]._connectNames)[rooms[*roomCounter].numConnections], token3);
             rooms[*roomCounter].numConnections++;
         }
         else
@@ -189,14 +189,41 @@ int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter)
     return exitStatus;
 }
 
+void setRoomConnections(struct Room* rooms, int numRooms)
+{
+    // Go throuch each room
+    int roomCount;
+    for(roomCount = 0; roomCount < numRooms; roomCount++)
+    {
+        int connectCount;
+        // Go through each connection for the room
+        for(connectCount = 0; connectCount < rooms[roomCount].numConnections; connectCount++)
+        {
+            char* roomName = rooms[roomCount]._connectNames[connectCount];
+
+            // Search for Connected Room
+            int connectRoomNum;
+            for(connectRoomNum = 0; connectRoomNum < numRooms; connectRoomNum++)
+            {
+                // When the connected room name is found, store it
+                if(!strcmp(roomName, rooms[connectRoomNum].name))
+                {
+                    rooms[roomCount].connections[connectCount] = &rooms[connectRoomNum];
+                    break;
+                }
+            }
+        }
+    }
+}
+
 int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
 {
     int exitStatus = 0;                                 // Current Exit Status
     int numRooms = 0;                                   // Current Number of Rooms
     int directoryLength = strlen(directoryName) + 2;    // Length of Directory Location
     char directoryLocation[directoryLength];            // Directory Location
-    struct dirent* file;
-    struct stat attributes;
+    struct dirent* file;                                // The File in the Subdirectory
+    struct stat attributes;                             // The Attributes of the File
 
     // Create Directory Location
     memset(directoryLocation, '\0', directoryLength * sizeof(char));
@@ -223,8 +250,6 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
             // Convert File to Room if File Was Opened
             if (fileInput != NULL)
             {
-                // printf("==ROOM %d==\n", numRooms + 1);
-
                 exitStatus = fileToRoom(fileInput, rooms, &numRooms);
             }
             else
@@ -244,6 +269,9 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
     {
         exit(exitStatus);
     }
+
+    setRoomConnections(rooms, numRooms);
+
     return exitStatus;
 }
 
@@ -254,14 +282,19 @@ void _printRooms(struct Room* rooms, int numRooms)
     {
         printf("==ROOM %d==\n", count + 1);
         printf("ROOM NAME: %s\n", rooms[count].name);
-        printf("ROOM TYPE: %s\n", rooms[count].type);
-
-        printf("NUM CONNECTIONS: %d\n", rooms[count].numConnections);
-
+        // printf("NUM CONNECTIONS: %d\n", rooms[count].numConnections);
         int conCount;
+        // for(conCount = 0; conCount < rooms[count].numConnections; conCount++)
+        // {
+        //     printf("CONNECTION %d NAME: %s\n", conCount, rooms[count]._connectNames[conCount]);
+        // }
+
         for(conCount = 0; conCount < rooms[count].numConnections; conCount++)
         {
-            printf("CONNECTION %d NAME: %s\n", conCount, rooms[count].connectNames[conCount]);
+            char* roomName = rooms[count].connections[conCount]->name;
+            printf("CONNECTION %d: %s\n", conCount + 1, roomName);
         }
+
+        printf("ROOM TYPE: %s\n", rooms[count].type);
     }
 }
