@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,18 +17,31 @@ struct Room
 };
 
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
+int populateRooms(char* directoryName, char* fileType, struct Room* rooms);
 
 int main()
 {
-    char* DIRECTORY_PREFIX = "diazh.rooms.";  // Prefix of Directory
-    const int DIR_NAME_LENGTH = 100;
+    const int NUM_ROOMS = 7;                    // The Number of Rooms for the Program
+    char* DIRECTORY_PREFIX = "diazh.rooms.";    // Prefix of Directory
+    char* ROOM_FILE_TYPE = ".room";             // File type of Room Files
+    const int DIR_NAME_LENGTH = 100;            // Length Of Directory Name
+
+    int exitStatus = 0;                         // Exit Status of the Program
+    char directoryName[DIR_NAME_LENGTH];        // Directory of Rooms
+    struct Room* rooms;                         // The Rooms for the Game
 
     // Get Newest Directory
-    char directoryName[DIR_NAME_LENGTH];
-    memset(directoryName, '\0', DIR_NAME_LENGTH);
-    getNewestDirectory(DIRECTORY_PREFIX, directoryName);
+    memset(directoryName, '\0', DIR_NAME_LENGTH * sizeof(char));
+    exitStatus = getNewestDirectory(DIRECTORY_PREFIX, directoryName);
 
-    return 0;
+    // Store Rooms
+    rooms = malloc(NUM_ROOMS * sizeof(struct Room));    // Allocate Memory
+    exitStatus = populateRooms(directoryName, ROOM_FILE_TYPE, rooms);
+
+
+    free(rooms);    // Deallocate Memory
+
+    return exitStatus;
 }
 
 int getNewestDirectory(char* directoryPrefix, char* directoryName)
@@ -91,3 +105,62 @@ int getNewestDirectory(char* directoryPrefix, char* directoryName)
     return exitStatus;
 }
 
+int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
+{
+    int exitStatus = 0;                                 // Current Exit Status
+    int directoryLength = strlen(directoryName) + 2;    // Length of Directory Location
+    char directoryLocation[directoryLength];            // Directory Location
+    struct dirent* file;
+    struct stat attributes;
+
+    // Create Directory Location
+    memset(directoryLocation, '\0', directoryLength * sizeof(char));
+    sprintf(directoryLocation, "./%s", directoryName);
+
+    DIR* directory = opendir(directoryLocation);    // Open Directory
+
+    // Go through each file in the directory
+    while((file = readdir(directory)) != NULL)
+    {
+        char* extension = strrchr(file->d_name, '.');   // Get the File Extension
+
+        // If the correct file is found
+        if (!strcmp(extension, fileType) && extension != NULL)
+        {
+            // Get File Path
+            int PATH_LENGTH = strlen(directoryLocation) + strlen(file->d_name) + 1;
+            char filePath[PATH_LENGTH];
+            memset(filePath, '\0', PATH_LENGTH * sizeof(char));
+            sprintf(filePath, "%s/%s", directoryLocation, file->d_name);
+
+            FILE* fileInput = fopen(filePath, "r"); // Open File
+
+            if (fileInput != NULL)
+            {
+                // TODO: Get Information, Store Into rooms
+                printf("%s\n", file->d_name);
+
+                int LINE_LENGTH = 256;
+                char line[LINE_LENGTH];
+                int count = 0;
+
+                while(fgets(line, sizeof(line), fileInput))
+                {
+                    printf("Line %d: %s", ++count, line);
+                }
+            }
+            else
+            {
+                fprintf(stderr, "ERROR: Failed to Open File '%s'.", file->d_name);
+                exitStatus = 3;
+                break;
+            }
+            
+            fclose(fileInput);                      // Close File
+        }
+    }
+
+    closedir(directory);        // Close Directory
+
+    return exitStatus;
+}
