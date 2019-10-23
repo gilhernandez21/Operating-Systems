@@ -97,17 +97,10 @@ int playGame(struct Room* rooms, int numRooms)
         printf("\n");       // Create whitespace for new iteration
     }
 
-    // printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
-    // printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
-    // int count;
-    // for(count = 0; count < steps; count++)
-    // {
-    //     printf("%s\n", traveledRooms[count]);
-    // }
-
+    // Display End Game Sceen
     _displayEndMessage(steps, traveledRooms);
 
-    free(traveledRooms);
+    free(traveledRooms);    // Clear the list of visited rooms
 
     return 0;
 }
