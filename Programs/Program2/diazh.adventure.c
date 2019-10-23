@@ -26,12 +26,21 @@ void _printRooms(struct Room* rooms, int numRoms);
 int _getStartIndex(struct Room* rooms, int numRooms);
 void _printInterface(struct Room* room);
 int _getValidateInput(struct Room** room, char* input, int bufferSize);
+int _checkEnd(struct Room* room)
+{
+    if(!strcmp(room->type, "END_ROOM"))
+    {
+        return 1;
+    }
+    return 0;
+}
 
 int playGame(struct Room* rooms, int numRooms)
 {
     int startRoomIndex = _getStartIndex(rooms, numRooms);
     struct Room* curRoom = &rooms[startRoomIndex];
     int steps = 0;
+    char** traveledRooms = malloc(sizeof(char*) * (steps + 1));
 
     int play = 1;
     while(play)
@@ -52,11 +61,31 @@ int playGame(struct Room* rooms, int numRooms)
         // Otherwise, Increase Number of Steps and Check if in End Room
         else
         {
-            steps++;    // Increment the Number of Steps
+            steps++;                    // Increment the Number of Steps
+            play = !_checkEnd(curRoom); // Check if Current Room is the End
 
-            if(!strcmp(curRoom->type, "END_ROOM"))
+            if (steps == 1)
             {
-                play = 0;
+                traveledRooms[steps - 1] = curRoom->name;
+            }
+            else
+            {
+                char** tempRooms = malloc(sizeof(char*) * (steps - 1));
+                int count;
+                for(count = 0; count < steps - 1; count++)
+                {
+                    tempRooms[count] = traveledRooms[count];
+                }
+
+                free(traveledRooms);
+                traveledRooms = malloc(sizeof(char*) * steps);
+                for(count = 0; count < steps - 1; count++)
+                {
+                    traveledRooms[count] = tempRooms[count];
+                }
+                traveledRooms[steps - 1] = curRoom->name;
+
+                free(tempRooms);
             }
         }
 
@@ -65,6 +94,12 @@ int playGame(struct Room* rooms, int numRooms)
 
     printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
     printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
+    int count;
+    for(count = 0; count < steps; count++)
+    {
+        printf("%s\n", traveledRooms[count]);
+    }
+    free(traveledRooms);
 
     return 0;
 }
