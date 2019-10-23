@@ -323,10 +323,10 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
         if (!strcmp(extension, fileType) && extension != NULL)
         {
             // Get File Path
-            int PATH_LENGTH = strlen(directoryLocation) + strlen(file->d_name) + 1;
+            int PATH_LENGTH = strlen(directoryName) + strlen(file->d_name) + 3;
             char filePath[PATH_LENGTH];
             memset(filePath, '\0', PATH_LENGTH * sizeof(char));
-            sprintf(filePath, "%s/%s", directoryLocation, file->d_name);
+            sprintf(filePath, "./%s/%s", directoryName, file->d_name);
 
             FILE* fileInput = fopen(filePath, "r"); // Open File
 
