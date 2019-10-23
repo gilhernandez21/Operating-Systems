@@ -26,22 +26,20 @@ void _printRooms(struct Room* rooms, int numRoms);
 int _getStartIndex(struct Room* rooms, int numRooms);
 void _printInterface(struct Room* room);
 int _getValidateInput(struct Room** room, char* input, int bufferSize);
-int _checkEnd(struct Room* room)
-{
-    if(!strcmp(room->type, "END_ROOM"))
-    {
-        return 1;
-    }
-    return 0;
-}
+int _checkEnd(struct Room* room);
+void _displayEndMessage(int steps, char** roomsVisited);
 
 int playGame(struct Room* rooms, int numRooms)
 {
+    int steps = 0;          // Counter for the Number of Steps
+    char** traveledRooms;   // Holds Previously Visited Rooms
+    traveledRooms = malloc(sizeof(char*) * (steps + 1));
+
+    // Find the Starting Room
     int startRoomIndex = _getStartIndex(rooms, numRooms);
     struct Room* curRoom = &rooms[startRoomIndex];
-    int steps = 0;
-    char** traveledRooms = malloc(sizeof(char*) * (steps + 1));
 
+    // Play the Game Until the End Room is Found
     int play = 1;
     while(play)
     {
@@ -64,12 +62,16 @@ int playGame(struct Room* rooms, int numRooms)
             steps++;                    // Increment the Number of Steps
             play = !_checkEnd(curRoom); // Check if Current Room is the End
 
+            // Record the Path of the User
+            // If its the first step, set the first index
             if (steps == 1)
             {
                 traveledRooms[steps - 1] = curRoom->name;
             }
+            // Otherwise, reallocate the array and add the new room
             else
             {
+                // Create a temporary array to hold the previous rooms
                 char** tempRooms = malloc(sizeof(char*) * (steps - 1));
                 int count;
                 for(count = 0; count < steps - 1; count++)
@@ -77,28 +79,34 @@ int playGame(struct Room* rooms, int numRooms)
                     tempRooms[count] = traveledRooms[count];
                 }
 
-                free(traveledRooms);
+                // Reallocate Memory and Populate with Previous Rooms
+                free(traveledRooms);        // Clear Old Traveled Room
                 traveledRooms = malloc(sizeof(char*) * steps);
                 for(count = 0; count < steps - 1; count++)
                 {
                     traveledRooms[count] = tempRooms[count];
                 }
+
+                // Add the Newest Room
                 traveledRooms[steps - 1] = curRoom->name;
 
-                free(tempRooms);
+                free(tempRooms);            // Clear the Temporary Array
             }
         }
 
-        printf("\n");
+        printf("\n");       // Create whitespace for new iteration
     }
 
-    printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
-    printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
-    int count;
-    for(count = 0; count < steps; count++)
-    {
-        printf("%s\n", traveledRooms[count]);
-    }
+    // printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
+    // printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
+    // int count;
+    // for(count = 0; count < steps; count++)
+    // {
+    //     printf("%s\n", traveledRooms[count]);
+    // }
+
+    _displayEndMessage(steps, traveledRooms);
+
     free(traveledRooms);
 
     return 0;
@@ -454,4 +462,24 @@ int _getValidateInput(struct Room** room, char* input, int bufferSize)
     }
 
     return inputValid;
+}
+
+int _checkEnd(struct Room* room)
+{
+    if(!strcmp(room->type, "END_ROOM"))
+    {
+        return 1;
+    }
+    return 0;
+}
+
+void _displayEndMessage(int steps, char** roomsVisited)
+{
+    printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
+    printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
+    int count;
+    for(count = 0; count < steps; count++)
+    {
+        printf("%s\n", roomsVisited[count]);
+    }
 }
