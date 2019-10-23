@@ -25,11 +25,13 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms);
 void _printRooms(struct Room* rooms, int numRoms);
 int _getStartIndex(struct Room* rooms, int numRooms);
 void _printInterface(struct Room* room);
+int _getValidateInput(struct Room** room, char* input, int bufferSize);
 
 int playGame(struct Room* rooms, int numRooms)
 {
     int startRoomIndex = _getStartIndex(rooms, numRooms);
     struct Room* curRoom = &rooms[startRoomIndex];
+    int steps = 0;
 
     int play = 1;
     while(play)
@@ -38,13 +40,32 @@ int playGame(struct Room* rooms, int numRooms)
         _printInterface(curRoom);
 
         // Get User Input
+        const int BUFFER_SIZE = 256;
+        char input[BUFFER_SIZE];
+        int inputValid = _getValidateInput(&curRoom, input, BUFFER_SIZE);
 
+        // Inform User if Input is Invalid
+        if(inputValid == 0)
+        {
+            printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+        }
+        // Otherwise, Increase Number of Steps and Check if in End Room
+        else
+        {
+            steps++;    // Increment the Number of Steps
 
-        // Perform User Action
+            if(!strcmp(curRoom->type, "END_ROOM"))
+            {
+                play = 0;
+            }
+        }
 
-
-        play = 0;
+        printf("\n");
     }
+
+    printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
+    printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
+
     return 0;
 }
 
@@ -368,4 +389,34 @@ void _printInterface(struct Room* room)
     }
     // Ask For Input
     printf("WHERE TO? >");
+}
+
+int _getValidateInput(struct Room** room, char* input, int bufferSize)
+{
+    int inputValid = 0;
+
+    fgets(input, bufferSize, stdin);    // Get Input
+
+    // Replace trailing newline character with null character
+    /* Based on 
+    https://stackoverflow.com/questions/2693776/removing-trailing-newline-character-from-fgets-input */
+    char* newline = strchr(input, '\n');
+    if (newline != NULL)
+    {
+        *newline = '\0';
+    }
+
+    // Check Each Connected Room for Matching Name
+    int count;
+    for(count = 0; count < (*room)->numConnections; count++)
+    {
+        if(!strcmp(input, (*room)->connections[count]->name))
+        {
+            *room = (*room)->connections[count]; // Set Room
+            inputValid = 1;
+            break;
+        }
+    }
+
+    return inputValid;
 }
