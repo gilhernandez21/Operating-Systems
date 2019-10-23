@@ -14,7 +14,7 @@ struct Room
     char type[12];                  // TYPE OF ROOM
     int numConnections;             // NUMBER OF CONNECTIONS TO ROOM
     struct Room* connections[6];    // THE CONNECTED ROOMS
-    char _connectNames[6][8];        // 
+    char _connectNames[6][8];       // The Names of Connected Rooms
 };
 
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
@@ -23,6 +23,30 @@ int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter);
 void setRoomConnections(struct Room* rooms, int numRooms);
 int populateRooms(char* directoryName, char* fileType, struct Room* rooms);
 void _printRooms(struct Room* rooms, int numRoms);
+int _getStartIndex(struct Room* rooms, int numRooms);
+void _printInterface(struct Room* room);
+
+int playGame(struct Room* rooms, int numRooms)
+{
+    int startRoomIndex = _getStartIndex(rooms, numRooms);
+    struct Room* curRoom = &rooms[startRoomIndex];
+
+    int play = 1;
+    while(play)
+    {
+        // Display Interface
+        _printInterface(curRoom);
+
+        // Get User Input
+
+
+        // Perform User Action
+
+
+        play = 0;
+    }
+    return 0;
+}
 
 int main()
 {
@@ -45,7 +69,9 @@ int main()
     // Transfer Room Data from Files into Structs
     exitStatus = populateRooms(directoryName, ROOM_FILE_TYPE, rooms);
 
-    _printRooms(rooms, NUM_ROOMS);  // DEBUGGING: View Room Info
+    // _printRooms(rooms, NUM_ROOMS);  // DEBUGGING: View Room Info
+
+    playGame(rooms, NUM_ROOMS);
 
     free(rooms);    // Deallocate Memory
 
@@ -270,6 +296,7 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
         exit(exitStatus);
     }
 
+    // Use the _connectName data members from struct to set connections data member.
     setRoomConnections(rooms, numRooms);
 
     return exitStatus;
@@ -297,4 +324,48 @@ void _printRooms(struct Room* rooms, int numRooms)
 
         printf("ROOM TYPE: %s\n", rooms[count].type);
     }
+}
+
+int _getStartIndex(struct Room* rooms, int numRooms)
+{
+    int roomNum = -1;
+
+    // Go through each room, looking for start room
+    for(roomNum = 0; roomNum < numRooms; roomNum++)
+    {
+        // When start room found, return the index
+        if(!strcmp(rooms[roomNum].type, "START_ROOM"))
+        {
+            return roomNum;
+        }
+    }
+    // Return error if start room not found.
+    if(roomNum == -1)
+    {
+        fprintf(stderr, "ERROR: Failed to Find Start Room");
+        exit(6);
+    }
+}
+
+void _printInterface(struct Room* room)
+{
+    // Print Room Name
+    printf("CURRENT LOCATION: %s\n",room->name);
+    // Print Connected Rooms
+    printf("POSSIBLE CONNECTIONS: ");
+    int count;
+    for(count = 0; count < room->numConnections; count++)
+    {
+        if(count != room->numConnections - 1)
+        {
+            printf("%s, ", room->connections[count]->name);
+        }
+        else
+        {
+            printf("%s.\n", room->connections[count]->name);
+        }
+        
+    }
+    // Ask For Input
+    printf("WHERE TO? >");
 }
