@@ -88,15 +88,17 @@ int playGame(struct Room* rooms, int numRooms)
         char input[BUFFER_SIZE];
         int inputValid = _getValidateInput(&curRoom, input, BUFFER_SIZE);
 
-        // Inform User if Input is Invalid
+        // If the Input Did Not Match the Rooms...
         if(inputValid == 0)
         {
+            // If the input was time, run time thread and print resulting currentTime.txt
             if(!strcmp(input, "time"))
             {
                 _resumeThread(&COND_TIME, &MUTEX_TIME);
                 pthread_cond_wait(&COND_MAIN, &MUTEX_MAIN);
                 readCurrentTime();
             }
+            // Otherwise, Inform the User if the Input is Invalid
             else
             {
                 printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
@@ -593,6 +595,9 @@ int readCurrentTime()
 
     if (fileInput != NULL)
     {
+        printf("\n");       // Create whitespace
+
+        // Print Contents of File
         while(fgets(buffer, sizeof(buffer), fileInput))
         {
             printf("%s", buffer);
