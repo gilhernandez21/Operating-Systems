@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 struct Room
@@ -28,6 +29,10 @@ void _printInterface(struct Room* room);
 int _getValidateInput(struct Room** room, char* input, int bufferSize);
 int _checkEnd(struct Room* room);
 void _displayEndMessage(int steps, char** roomsVisited);
+void _getCurrentTime(char* timeString, int bufferSize);
+int _writeToFile(char* fileName, char* input);
+int writeCurrentTime();
+int readCurrentTime();
 
 int playGame(struct Room* rooms, int numRooms)
 {
@@ -475,4 +480,92 @@ void _displayEndMessage(int steps, char** roomsVisited)
     {
         printf("%s\n", roomsVisited[count]);
     }
+}
+
+void _getCurrentTime(char* timeString, int bufferSize)
+{
+    struct tm* currentTime; 
+    time_t calTime ; 
+    time( &calTime ); 
+      
+    currentTime = localtime(&calTime); 
+
+    strftime(timeString, sizeof(char) * bufferSize, "%l:%M%p, %A, %B %d, %Y", currentTime); 
+}
+
+int _writeToFile(char* fileName, char* input)
+{
+    int exitStatus = 0;
+    FILE* fileOutput = fopen(fileName, "w");
+
+    if (fileOutput != NULL)
+    {
+        fprintf(fileOutput, "%s\n", input);
+    }
+    else
+    {
+        fprintf(stderr, "ERROR: Failed to Write Time File.");
+        exitStatus = 1;
+    }
+
+    fclose(fileOutput);
+
+    return 0;
+}
+
+int writeCurrentTime()
+{
+    char* TIME_FILE_NAME = "currentTime.txt";    // Time File Name
+    int exitStatus = 0;                     // Exit Status of the Function
+
+    int BUFFER_SIZE = 128;
+    char timeString[BUFFER_SIZE];       // Holds the Time String
+
+    // Get Current Time and Save to timeString
+    _getCurrentTime(timeString, BUFFER_SIZE);
+
+    // Write Current Time to File
+    exitStatus = _writeToFile(TIME_FILE_NAME, timeString);
+
+    // Check if there was an Error
+    if(exitStatus != 0)
+    {
+        fprintf(stderr, "ERROR: FAILED TO WRITE TIME.");
+        exit(exitStatus);
+    }
+
+    return exitStatus;
+}
+
+int readCurrentTime()
+{
+    int exitStatus = 0;
+    char* TIME_FILE_NAME = "currentTime.txt";
+    FILE* fileInput = fopen(TIME_FILE_NAME, "r");
+
+    const int BUFFER_SIZE = 256;
+    char buffer[BUFFER_SIZE];
+
+    if (fileInput != NULL)
+    {
+        while(fgets(buffer, sizeof(buffer), fileInput))
+        {
+            printf("%s", buffer);
+        }
+    }
+    else
+    {
+        exitStatus = 2;
+        fprintf(stderr, "ERROR: File '%s' Could Not Be Read.", TIME_FILE_NAME);
+    }
+    
+
+    fclose(fileInput);
+
+    if (exitStatus != 0)
+    {
+        exit(exitStatus);
+    }
+
+    return exitStatus;
 }
