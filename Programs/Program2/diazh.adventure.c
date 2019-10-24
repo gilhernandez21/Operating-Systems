@@ -45,7 +45,6 @@ int playGame(struct Room* rooms, int numRooms);
 
 int main()
 {
-    pthread_t timeThread;
     int resultCode;
     
     const int NUM_ROOMS = 7;                    // The Number of Rooms for the Program
@@ -527,10 +526,17 @@ void* action(void* argument)
     {
         // Wait to be activated by game
         pthread_cond_wait(&COND_TIME, &MUTEX_TIME);
-        // Write Current Time unto "currentTime.txt"
-        writeCurrentTime();
-        // Continue Game so it can read "currentTime.txt"
-        _resumeThread(&COND_MAIN,&MUTEX_MAIN);
+        if (*run != 0)
+        {
+            // Write Current Time unto "currentTime.txt"
+            writeCurrentTime();
+            // Continue Game so it can read "currentTime.txt"
+            _resumeThread(&COND_MAIN,&MUTEX_MAIN);
+        }
+        else
+        {
+            _resumeThread(&COND_MAIN, &MUTEX_MAIN);
+        }
     }
 
     pthread_mutex_unlock(&MUTEX_TIME);
@@ -627,6 +633,9 @@ int playGame(struct Room* rooms, int numRooms)
 
     free(traveledRooms);    // Clear the list of visited rooms
     pthread_mutex_unlock(&MUTEX_MAIN);
+    _resumeThread(&COND_TIME, &MUTEX_TIME);
+    pthread_cond_wait(&COND_MAIN, &MUTEX_MAIN);
+    pthread_join(timeThread, NULL);
 
     return 0;
 }
