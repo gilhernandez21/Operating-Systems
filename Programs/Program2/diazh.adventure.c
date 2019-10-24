@@ -39,120 +39,9 @@ void _getCurrentTime(char* timeString, int bufferSize);
 int _writeToFile(char* fileName, char* input);
 int writeCurrentTime();
 int readCurrentTime();
-
-void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
-{
-    pthread_mutex_lock(mutex);
-    pthread_cond_signal(condition);
-    pthread_mutex_unlock(mutex);
-}
-
-void* action(void* argument)
-{
-    pthread_mutex_lock(&MUTEX_TIME);
-    int* run = (int *) argument;
-
-    while (*run != 0)
-    {
-        pthread_cond_wait(&COND_TIME, &MUTEX_TIME);
-        writeCurrentTime();
-        _resumeThread(&COND_MAIN,&MUTEX_MAIN);
-    }
-
-    pthread_mutex_unlock(&MUTEX_TIME);
-}
-
-int playGame(struct Room* rooms, int numRooms)
-{
-    int steps = 0;          // Counter for the Number of Steps
-    char** traveledRooms;   // Holds Previously Visited Rooms
-    traveledRooms = malloc(sizeof(char*) * (steps + 1));
-
-    // Find the Starting Room
-    int startRoomIndex = _getStartIndex(rooms, numRooms);
-    struct Room* curRoom = &rooms[startRoomIndex];
-
-    // Play the Game Until the End Room is Found
-    int play = 1;
-    pthread_t timeThread;
-    int resultCode = pthread_create(&timeThread, NULL, action, (void*) &play);
-    pthread_mutex_lock(&MUTEX_MAIN);
-
-    while(play)
-    {
-        // Display Interface
-        _printInterface(curRoom);
-
-        // Get User Input
-        const int BUFFER_SIZE = 256;
-        char input[BUFFER_SIZE];
-        int inputValid = _getValidateInput(&curRoom, input, BUFFER_SIZE);
-
-        // If the Input Did Not Match the Rooms...
-        if(inputValid == 0)
-        {
-            // If the input was time, run time thread and print resulting currentTime.txt
-            if(!strcmp(input, "time"))
-            {
-                _resumeThread(&COND_TIME, &MUTEX_TIME);
-                pthread_cond_wait(&COND_MAIN, &MUTEX_MAIN);
-                readCurrentTime();
-            }
-            // Otherwise, Inform the User if the Input is Invalid
-            else
-            {
-                printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
-            }
-        }
-        // Otherwise, Increase Number of Steps and Check if in End Room
-        else
-        {
-            steps++;                    // Increment the Number of Steps
-            play = !_checkEnd(curRoom); // Check if Current Room is the End
-
-            // Record the Path of the User
-            // If its the first step, set the first index
-            if (steps == 1)
-            {
-                traveledRooms[steps - 1] = curRoom->name;
-            }
-            // Otherwise, reallocate the array and add the new room
-            else
-            {
-                // Create a temporary array to hold the previous rooms
-                char** tempRooms = malloc(sizeof(char*) * (steps - 1));
-                int count;
-                for(count = 0; count < steps - 1; count++)
-                {
-                    tempRooms[count] = traveledRooms[count];
-                }
-
-                // Reallocate Memory and Populate with Previous Rooms
-                free(traveledRooms);        // Clear Old Traveled Room
-                traveledRooms = malloc(sizeof(char*) * steps);
-                for(count = 0; count < steps - 1; count++)
-                {
-                    traveledRooms[count] = tempRooms[count];
-                }
-
-                // Add the Newest Room
-                traveledRooms[steps - 1] = curRoom->name;
-
-                free(tempRooms);            // Clear the Temporary Array
-            }
-        }
-
-        printf("\n");       // Create whitespace for new iteration
-    }
-
-    // Display End Game Sceen
-    _displayEndMessage(steps, traveledRooms);
-
-    free(traveledRooms);    // Clear the list of visited rooms
-    pthread_mutex_unlock(&MUTEX_MAIN);
-
-    return 0;
-}
+void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex);
+void* action(void* argument);
+int playGame(struct Room* rooms, int numRooms);
 
 int main()
 {
@@ -531,12 +420,14 @@ void _displayEndMessage(int steps, char** roomsVisited)
 
 void _getCurrentTime(char* timeString, int bufferSize)
 {
-    struct tm* currentTime; 
-    time_t calTime ; 
-    time( &calTime ); 
-      
-    currentTime = localtime(&calTime); 
+    struct tm* currentTime; // holds the different data members of current time
+    time_t calendarTime ;   // holds the time since from the time function
 
+    // Get the Current Time
+    time( &calendarTime ); 
+    currentTime = localtime(&calendarTime); 
+
+    // Convert the Current Time into Selected Format, then store in timeString
     strftime(timeString, sizeof(char) * bufferSize, "%l:%M%p, %A, %B %d, %Y", currentTime); 
 }
 
@@ -618,4 +509,124 @@ int readCurrentTime()
     }
 
     return exitStatus;
+}
+
+void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
+{
+    pthread_mutex_lock(mutex);
+    pthread_cond_signal(condition);
+    pthread_mutex_unlock(mutex);
+}
+
+void* action(void* argument)
+{
+    pthread_mutex_lock(&MUTEX_TIME);
+    int* run = (int *) argument;
+
+    while (*run != 0)
+    {
+        // Wait to be activated by game
+        pthread_cond_wait(&COND_TIME, &MUTEX_TIME);
+        // Write Current Time unto "currentTime.txt"
+        writeCurrentTime();
+        // Continue Game so it can read "currentTime.txt"
+        _resumeThread(&COND_MAIN,&MUTEX_MAIN);
+    }
+
+    pthread_mutex_unlock(&MUTEX_TIME);
+}
+
+int playGame(struct Room* rooms, int numRooms)
+{
+    int steps = 0;          // Counter for the Number of Steps
+    char** traveledRooms;   // Holds Previously Visited Rooms
+    traveledRooms = malloc(sizeof(char*) * (steps + 1));
+
+    // Find the Starting Room
+    int startRoomIndex = _getStartIndex(rooms, numRooms);
+    struct Room* curRoom = &rooms[startRoomIndex];
+
+    // Play the Game Until the End Room is Found
+    int play = 1;
+    pthread_t timeThread;
+    int resultCode = pthread_create(&timeThread, NULL, action, (void*) &play);
+    pthread_mutex_lock(&MUTEX_MAIN);
+
+    while(play)
+    {
+        // Display Interface
+        _printInterface(curRoom);
+
+        // Get User Input
+        const int BUFFER_SIZE = 256;
+        char input[BUFFER_SIZE];
+        int inputValid = _getValidateInput(&curRoom, input, BUFFER_SIZE);
+
+        // If the Input Did Not Match the Rooms...
+        if(inputValid == 0)
+        {
+            // If the input was time, run time thread and print resulting currentTime.txt
+            if(!strcmp(input, "time"))
+            {
+                // Unpause the Other Thread
+                _resumeThread(&COND_TIME, &MUTEX_TIME);
+                // Wait for File to Be Created by Time Thread
+                pthread_cond_wait(&COND_MAIN, &MUTEX_MAIN);
+                // Output the Current Time from "currentTime.txt"
+                readCurrentTime();
+            }
+            // Otherwise, Inform the User if the Input is Invalid
+            else
+            {
+                printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+            }
+        }
+        // Otherwise, Increase Number of Steps and Check if in End Room
+        else
+        {
+            steps++;                    // Increment the Number of Steps
+            play = !_checkEnd(curRoom); // Check if Current Room is the End
+
+            // Record the Path of the User
+            // If its the first step, set the first index
+            if (steps == 1)
+            {
+                traveledRooms[steps - 1] = curRoom->name;
+            }
+            // Otherwise, reallocate the array and add the new room
+            else
+            {
+                // Create a temporary array to hold the previous rooms
+                char** tempRooms = malloc(sizeof(char*) * (steps - 1));
+                int count;
+                for(count = 0; count < steps - 1; count++)
+                {
+                    tempRooms[count] = traveledRooms[count];
+                }
+
+                // Reallocate Memory and Populate with Previous Rooms
+                free(traveledRooms);        // Clear Old Traveled Room
+                traveledRooms = malloc(sizeof(char*) * steps);
+                for(count = 0; count < steps - 1; count++)
+                {
+                    traveledRooms[count] = tempRooms[count];
+                }
+
+                // Add the Newest Room
+                traveledRooms[steps - 1] = curRoom->name;
+
+                free(tempRooms);            // Clear the Temporary Array
+            }
+        }
+
+        printf("\n");       // Create whitespace for new iteration
+    }
+
+    // Display End Game Sceen
+    _displayEndMessage(steps, traveledRooms);
+
+    free(traveledRooms);    // Clear the list of visited rooms
+    pthread_mutex_unlock(&MUTEX_MAIN);
+
+    return 0;
 }
