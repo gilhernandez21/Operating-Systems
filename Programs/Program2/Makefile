@@ -5,10 +5,10 @@ BUILD = diazh.buildrooms.c
 ADVENTURE = diazh.adventure.c
 
 main:
-	${CXX} ${ADVENTURE} -o diazh.adventure
+	${CXX} -o diazh.adventure ${ADVENTURE} -lpthread
 
 build:
-	${CXX} ${BUILD} -o diazh.buildrooms
+	${CXX} -o diazh.buildrooms ${BUILD} 
 
 cleanA:
 	rm -f diazh.adventure
