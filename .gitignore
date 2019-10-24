@@ -56,6 +56,7 @@ Programs/Program1/p1gradingscript
 Programs/Program1/tests/
 
 # PROGRAM 2
+Programs/Program2/currentTime.txt
 Programs/Program2/diazh.buildrooms
 Programs/Program2/diazh.adventure
 Programs/Program2/diazh.rooms.*/
