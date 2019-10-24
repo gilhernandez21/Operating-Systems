@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,11 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
+pthread_mutex_t MUTEX_TIME = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t COND_TIME = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t MUTEX_MAIN = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t COND_MAIN = PTHREAD_COND_INITIALIZER;
 
 struct Room
 {
@@ -34,6 +40,28 @@ int _writeToFile(char* fileName, char* input);
 int writeCurrentTime();
 int readCurrentTime();
 
+void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
+{
+    pthread_mutex_lock(mutex);
+    pthread_cond_signal(condition);
+    pthread_mutex_unlock(mutex);
+}
+
+void* action(void* argument)
+{
+    pthread_mutex_lock(&MUTEX_TIME);
+    int* run = (int *) argument;
+
+    while (*run != 0)
+    {
+        pthread_cond_wait(&COND_TIME, &MUTEX_TIME);
+        writeCurrentTime();
+        _resumeThread(&COND_MAIN,&MUTEX_MAIN);
+    }
+
+    pthread_mutex_unlock(&MUTEX_TIME);
+}
+
 int playGame(struct Room* rooms, int numRooms)
 {
     int steps = 0;          // Counter for the Number of Steps
@@ -46,6 +74,10 @@ int playGame(struct Room* rooms, int numRooms)
 
     // Play the Game Until the End Room is Found
     int play = 1;
+    pthread_t timeThread;
+    int resultCode = pthread_create(&timeThread, NULL, action, (void*) &play);
+    pthread_mutex_lock(&MUTEX_MAIN);
+
     while(play)
     {
         // Display Interface
@@ -59,7 +91,16 @@ int playGame(struct Room* rooms, int numRooms)
         // Inform User if Input is Invalid
         if(inputValid == 0)
         {
-            printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+            if(!strcmp(input, "time"))
+            {
+                _resumeThread(&COND_TIME, &MUTEX_TIME);
+                pthread_cond_wait(&COND_MAIN, &MUTEX_MAIN);
+                readCurrentTime();
+            }
+            else
+            {
+                printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+            }
         }
         // Otherwise, Increase Number of Steps and Check if in End Room
         else
@@ -106,12 +147,16 @@ int playGame(struct Room* rooms, int numRooms)
     _displayEndMessage(steps, traveledRooms);
 
     free(traveledRooms);    // Clear the list of visited rooms
+    pthread_mutex_unlock(&MUTEX_MAIN);
 
     return 0;
 }
 
 int main()
 {
+    pthread_t timeThread;
+    int resultCode;
+    
     const int NUM_ROOMS = 7;                    // The Number of Rooms for the Program
     char* DIRECTORY_PREFIX = "diazh.rooms.";    // Prefix of Directory
     char* ROOM_FILE_TYPE = ".room";             // File type of Room Files
