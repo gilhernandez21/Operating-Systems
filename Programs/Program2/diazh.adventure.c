@@ -1,3 +1,19 @@
+/**
+ * Program name:    Program 2 - diazh.adventure.c
+ * Author:          Herbert Diaz
+ * Date created:    10/14/2019
+ * Last modified:   10/28/2019
+ * Description:
+ *      This game has the player move through rooms until the exit
+ *  is found. The interface shows information about the current room,
+ *  including the room name and the connected rooms. Along with having
+ *  the user enter the room names, the user can also enter a "time".
+ *  This "time" command causes another thread to create a file called
+ *  "currentTime.txt", then returns to the main thread which prints the
+ *  content of the newly created file, which contains the current time
+ *  and date.
+**/
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -9,6 +25,7 @@
 #include <time.h>
 #include <unistd.h>
 
+// GLOBAL VARIABLES
 pthread_mutex_t MUTEX_TIME = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t COND_TIME = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t MUTEX_MAIN = PTHREAD_MUTEX_INITIALIZER;
@@ -24,6 +41,7 @@ struct Room
     char _connectNames[6][8];       // The Names of Connected Rooms
 };
 
+// Prototypes
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
 void initializeRooms(struct Room* rooms, int numRooms);
 int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter);
@@ -45,8 +63,6 @@ int playGame(struct Room* rooms, int numRooms);
 
 int main()
 {
-    int resultCode;
-    
     const int NUM_ROOMS = 7;                    // The Number of Rooms for the Program
     char* DIRECTORY_PREFIX = "diazh.rooms.";    // Prefix of Directory
     char* ROOM_FILE_TYPE = ".room";             // File type of Room Files
@@ -68,13 +84,26 @@ int main()
 
     // _printRooms(rooms, NUM_ROOMS);  // DEBUGGING: View Room Info
 
+    // Run the Game
     playGame(rooms, NUM_ROOMS);
 
     free(rooms);    // Deallocate Memory
 
     return exitStatus;
 }
-
+/**
+ * getNewestDirectory(char* directoryPrefix, char* directoryName)
+ * Input
+ *  char* directoryPrefix - The defining prefix of the directory used
+ *      to determine whether a directory is valid.
+ *  char* directoryName - Holds the newest directory's name
+ * Output
+ *  int - Returns 0 if Function Ran Properly
+ * Description
+ *  This function looks through all directory's within the current folder,
+ *  setting the most recently modified directory as the newest directory.
+ *  BASED ON BLOCK 2 LECTURE MATERIAL
+**/
 int getNewestDirectory(char* directoryPrefix, char* directoryName)
 {
     int exitStatus = 0;                     // The Exit Status of Function
@@ -136,6 +165,17 @@ int getNewestDirectory(char* directoryPrefix, char* directoryName)
     return exitStatus;
 }
 
+/**
+ * initializeRooms(struct Room* rooms, int numRooms)
+ * Input
+ *  struct Room* rooms - pointer to an array of rooms
+ *  int numRooms - the number of rooms in the array
+ * Output
+ *  none
+ * Description
+ *  This function initalizes room structs by giving the
+ *  rooms an ID and the number of connections to 0.
+**/
 void initializeRooms(struct Room* rooms, int numRooms)
 {
     int count;
@@ -146,6 +186,18 @@ void initializeRooms(struct Room* rooms, int numRooms)
     }
 }
 
+/**
+ * fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter)
+ * Input
+ *  FILE* fileInput - the current room file.
+ *  struct Room* rooms - an array of rooms
+ *  int* roomCounter - pointer to a counter that tracks the room number
+ * Output
+ *  int - returns 0 if function performs successfully.
+ * Description
+ *  Takes information from a file and stores that information into rooms
+ *  in the program.
+**/
 int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter)
 {
     const int BUFFER_SIZE = 256;    // Number of Characters for Buffer
@@ -212,6 +264,17 @@ int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter)
     return exitStatus;
 }
 
+/**
+ * setRoomConnections(struct Room* rooms, int numRooms)
+ * Input
+ *  struct Room* rooms - an array of rooms
+ *  int numRooms - the number of rooms
+ * Output
+ *  none
+ * Description
+ *  Goes through each room in the array, checking the
+ *  _connectNames to set the connections data member.
+**/
 void setRoomConnections(struct Room* rooms, int numRooms)
 {
     // Go throuch each room
@@ -239,6 +302,18 @@ void setRoomConnections(struct Room* rooms, int numRooms)
     }
 }
 
+/**
+ * populateRooms(char* directoryName, char* fileType, struct Room* rooms)
+ * Input
+ *  char* directoryName - the name of the directory that contains the room files
+ *  char* fileType - the extension of the room files
+ *  struct Room* rooms - an array of rooms
+ * Output
+ *  returns 0 on success
+ * Description
+ *  Goes through each valid file in the directory, storing the information from
+ *  the files into an array of rooms.
+**/
 int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
 {
     int exitStatus = 0;                                 // Current Exit Status
@@ -299,6 +374,16 @@ int populateRooms(char* directoryName, char* fileType, struct Room* rooms)
     return exitStatus;
 }
 
+/**
+ * _printRooms(struct Room* rooms, int numRooms)
+ * Input
+ *  struct Room* rooms - an array of rooms
+ *  int numRooms - the number of rooms in th earray
+ * Output
+ *  prints the contents of each room into stdout
+ * Description
+ *  Helper function for debugging rooms
+**/
 void _printRooms(struct Room* rooms, int numRooms)
 {
     int count;
@@ -323,6 +408,16 @@ void _printRooms(struct Room* rooms, int numRooms)
     }
 }
 
+/**
+ * _getStartIndex(struct Room* rooms, int numRooms)
+ * Input
+ *  struct Room* rooms - an array of rooms
+ *  int numRooms - the number of rooms in the array
+ * Output
+ *  returns the index of the start room.
+ * Description
+ *  Searches for the start room
+**/
 int _getStartIndex(struct Room* rooms, int numRooms)
 {
     int roomNum = -1;
@@ -344,6 +439,15 @@ int _getStartIndex(struct Room* rooms, int numRooms)
     }
 }
 
+/**
+ * _printInterface(struct Room* room)
+ * Input
+ *  struct Room* room - pointer to a room.
+ * Output
+ *  prints room information into stdout
+ * Description
+ *  helper function that prints the interface for the game
+**/
 void _printInterface(struct Room* room)
 {
     // Print Room Name
@@ -367,6 +471,18 @@ void _printInterface(struct Room* room)
     printf("WHERE TO? >");
 }
 
+/**
+ * _getValidateInput(struct Room** room, char* input, int bufferSize)
+ * Input
+ *  struct Room** room - pointer to a pointer of a room.
+ *  char* input - the user's input
+ *  int bufferSize - the number of characters for the input
+ * Output
+ *  returns 0 if input is invalid, 1 if input is valid.
+ * Description
+ *  This function gets the user's input, validates the input as
+ *  valid or invalid, then sets the current room to the valid input.
+**/
 int _getValidateInput(struct Room** room, char* input, int bufferSize)
 {
     int inputValid = 0;
@@ -397,6 +513,15 @@ int _getValidateInput(struct Room** room, char* input, int bufferSize)
     return inputValid;
 }
 
+/**
+ * _checkEnd(struct Room* room)
+ * Input
+ *  struct Room* room - pointer to the current room.
+ * Output
+ *  returns 1 if the current room is the end room, otherwise returns 0.
+ * Description
+ *  Checks current room to see if it is the ending room.
+**/
 int _checkEnd(struct Room* room)
 {
     if(!strcmp(room->type, "END_ROOM"))
@@ -406,6 +531,18 @@ int _checkEnd(struct Room* room)
     return 0;
 }
 
+/**
+ * _displayEndMessage(int steps, char** roomsVisited)
+ * Input
+ *  int steps - the number of steps taken for the game.
+ *  char** roomsVisited - array of strings that contain the
+ *      name of the rooms visited.
+ * Output
+ *  Prints the end game message to stdout.
+ * Description
+ *  This function informs the player they have beaten the game and
+ *  some statistics for their playthrough.
+**/
 void _displayEndMessage(int steps, char** roomsVisited)
 {
     printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
@@ -417,6 +554,16 @@ void _displayEndMessage(int steps, char** roomsVisited)
     }
 }
 
+/**
+ * _getCurrentTime(char* timeString, int bufferSize)
+ * Input
+ *  char* timeString - holds the formatted time.
+ *  int bufferSize, the number of available characteres of timeStrings
+ * Output
+ *  none
+ * Description
+ *  Saves the current time into timeString
+**/
 void _getCurrentTime(char* timeString, int bufferSize)
 {
     struct tm* currentTime; // holds the different data members of current time
@@ -430,6 +577,16 @@ void _getCurrentTime(char* timeString, int bufferSize)
     strftime(timeString, sizeof(char) * bufferSize, "%l:%M%p, %A, %B %d, %Y", currentTime); 
 }
 
+/**
+ * _writeToFile(char* fileName, char* input)
+ * Input
+ *  char* fileName - the name of the file to write to.
+ *  char* input - the string to save into the file.
+ * Output
+ *  returns 0 on success
+ * Description
+ *  writes input into a file
+**/
 int _writeToFile(char* fileName, char* input)
 {
     int exitStatus = 0;
@@ -450,6 +607,15 @@ int _writeToFile(char* fileName, char* input)
     return 0;
 }
 
+/**
+ * writeCurrentTime()
+ * Input
+ *  none
+ * Output
+ *  currentTime.txt file is created
+ * Description
+ *  writes the current time into a file called "currentTime.txt"
+**/
 int writeCurrentTime()
 {
     char* TIME_FILE_NAME = "currentTime.txt";    // Time File Name
@@ -474,6 +640,15 @@ int writeCurrentTime()
     return exitStatus;
 }
 
+/**
+ * readCurrentTime()
+ * Input
+ *  none
+ * Output
+ *  Outputs the contents of "currentTime.txt" into stdout
+ * Description
+ *  Shows the contents of "currentTime.txt"
+**/
 int readCurrentTime()
 {
     int exitStatus = 0;
@@ -510,6 +685,16 @@ int readCurrentTime()
     return exitStatus;
 }
 
+/**
+ * _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
+ * Input
+ *  pthread_cond_t* condition - the condition for the thread.
+ *  pthread_mutex_t* mutex - the mutext for the thread
+ * Output
+ *  none
+ * Description
+ *  Locks the mutex, toggles the condition, then unlocks the thread.
+**/
 void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
 {
     pthread_mutex_lock(mutex);
@@ -517,6 +702,17 @@ void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex)
     pthread_mutex_unlock(mutex);
 }
 
+/**
+ * action(void* argument)
+ * Input
+ *  void* argument - holds whether the time loop should continue as an int
+ * Output
+ *  none
+ * Description
+ *  Runs on a seperate thread, writing the current time into a file when
+ *  called by another thread. Continues running until the run argument is
+ *  deactivated by another thread.
+**/
 void* action(void* argument)
 {
     pthread_mutex_lock(&MUTEX_TIME);
@@ -542,6 +738,18 @@ void* action(void* argument)
     pthread_mutex_unlock(&MUTEX_TIME);
 }
 
+/**
+ * playGame(struct Room* rooms, int numRooms)
+ * Input
+ *  struct Room* rooms - an array of rooms
+ *  int numRooms - the number of rooms
+ * Output
+ *  returns 0 on success
+ * Description
+ *  This game starts the player in the starting room, takes input
+ *  to determine where the player goes or whether or not to print
+ *  the time, and ends when the player finds the ending room.
+**/
 int playGame(struct Room* rooms, int numRooms)
 {
     int steps = 0;          // Counter for the Number of Steps
