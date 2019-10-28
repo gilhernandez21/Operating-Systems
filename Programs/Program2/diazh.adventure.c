@@ -42,24 +42,27 @@ struct Room
 };
 
 // Prototypes
+// Game Setup Functions
 int getNewestDirectory(char* directoryPrefix, char* directoryName);
 void initializeRooms(struct Room* rooms, int numRooms);
 int fileToRoom(FILE* fileInput, struct Room* rooms, int* roomCounter);
 void setRoomConnections(struct Room* rooms, int numRooms);
 int populateRooms(char* directoryName, char* fileType, struct Room* rooms);
-void _printRooms(struct Room* rooms, int numRoms);
+void _printRooms(struct Room* rooms, int numRoms); // DEBUGGING FUNCTION
 int _getStartIndex(struct Room* rooms, int numRooms);
+// Gameplay Functions
 void _printInterface(struct Room* room);
 int _getValidateInput(struct Room** room, char* input, int bufferSize);
 int _checkEnd(struct Room* room);
 void _displayEndMessage(int steps, char** roomsVisited);
 void _getCurrentTime(char* timeString, int bufferSize);
 int _writeToFile(char* fileName, char* input);
+// Timekeeping Functions
 int writeCurrentTime();
 int readCurrentTime();
 void _resumeThread(pthread_cond_t* condition, pthread_mutex_t* mutex);
-void* action(void* argument);
-int playGame(struct Room* rooms, int numRooms);
+void* action(void* argument);   // USES MUTEX AND IS THE TIME-KEEPING THREAD
+int playGame(struct Room* rooms, int numRooms); // USES MUTEX
 
 int main()
 {
