@@ -4,32 +4,35 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define SMALLSH_MAX_ARGS 512
+
 void writePrompt();
 void getInput(char** inputPtr, size_t* bufferPtr);
+void inputToComArgs(char* input, char** commandPtr, char** arguments);
+void resetArguments(char** arguments);
 void cleanInput(char** inputPtr);
-void smallsh_cd(char* token);
+void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
-void smallsh_exit(int* runPtr);
+void smallsh_exit(char* input);
 
-int checkInput(char* input, int* exitStatus, int* run)
-{   
-    char* token = strtok(input, " ");
-    if (token != NULL && token[0] != '#')   // Allow Blank Lines and Comments
+int checkInput(char* input, char* command, char** arguments, int* exitStatus)
+{
+    if (command != NULL && command[0] != '#')   // Allow Blank Lines and Comments
     {
         // Built-in Command: 'cd'
-        if (!strcmp(token, "cd"))
+        if (!strcmp(command, "cd"))
         {
-            smallsh_cd(token);
+            smallsh_cd(arguments);
         }
         // Built-in Command: 'status'
-        else if (!strcmp(token, "status"))
+        else if (!strcmp(command, "status"))
         {
             smallsh_status(*exitStatus);
         }
         // Built-in Command: 'exit'
-        else if (!strcmp(token, "exit"))
+        else if (!strcmp(command, "exit"))
         {
-            smallsh_exit(run);
+            smallsh_exit(input);
         }
         else
         {
@@ -44,18 +47,21 @@ int checkInput(char* input, int* exitStatus, int* run)
 int main()
 {
     int exitStatus = 0;
-    int run = 1;
     size_t bufferSize = 0;
-    char* input = NULL;
+    char* input = NULL;                 // User Input from stdin
+    char* command;                      // User Command
+    char* arguments[SMALLSH_MAX_ARGS];  // Arguments for User Command
 
     do
     {
         writePrompt();
-        getInput(&input, &bufferSize);          // Get Input and Allocate Memory
-        checkInput(input, &exitStatus, &run);   // Check Input
+        getInput(&input, &bufferSize);              // Get Input and Allocate Memory
+        inputToComArgs(input, &command, arguments); // Separate Command and Arguments from Input
+        checkInput(input, command, arguments, &exitStatus);
 
-        cleanInput(&input);                     // Deallocate Memory for Input
-    } while(run);
+        cleanInput(&input);                         // Deallocate Memory for Input
+        resetArguments(arguments);                  // Reset all arguments to NULL
+    } while(1);
 
     return 0;
 }
@@ -72,12 +78,33 @@ void getInput(char** inputPtr, size_t* bufferPtr)
     (*inputPtr)[numChars - 1] = '\0';
 }
 
-void smallsh_cd(char* token)
+void inputToComArgs(char* input, char** commandPtr, char** arguments)
 {
-    token = strtok(NULL, " ");  // Check for Argument
+    *commandPtr = strtok(input, " ");
 
+    int counter = 0;
+    while ((arguments[counter] = strtok(NULL, " ")) != NULL)
+    {
+        counter++;
+    }
+}
+
+void resetArguments(char** arguments)
+{
+    int counter = 0;
+    while (arguments[counter] != NULL)
+    {
+        arguments[counter] = NULL;
+        counter++;
+    }
+}
+
+void smallsh_cd(char** arguments)
+{
+    // char directory[100]                      //DEBUGGING
+    // printf("%s\n", getcwd(directory, 100));  //DEBUGGING
     // No Arguments
-    if (token == NULL)
+    if (arguments[0] == NULL)
     {
         // Change Directory to HOME environment variable
         chdir(getenv("HOME"));
@@ -85,10 +112,10 @@ void smallsh_cd(char* token)
     // Argument Present
     else
     {
-        // Change Directory to token.
-        chdir(token);
+        // Change Directory to Argument.
+        chdir(arguments[0]);
     }
-    
+    // printf("%s\n", getcwd(directory, 100));  //DEBUGGING
 }
 
 void cleanInput(char** inputPtr)
@@ -103,10 +130,11 @@ void smallsh_status(int exitStatus)
     fflush(stdout);
 }
 
-void smallsh_exit(int* runPtr)
+void smallsh_exit(char* input)
 {
     // Cleanup
-
+    cleanInput(&input);
+    
     // Terminate
-    (*runPtr) = 0;
+    exit(0);
 }
