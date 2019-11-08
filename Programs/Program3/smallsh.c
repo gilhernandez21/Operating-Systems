@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,22 +18,66 @@ void cleanInput(char** inputPtr);
 void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
 void smallsh_exit(char* input);
-int checkRedirect(char** arguments)
+int _findString(char** array, char* string);
+int checkRedirectOut(char** arguments);
+int checkRedirectIn(char** arguments);
+void redirectInSetup(int index, int* source, char** arguments)
 {
-    int index = 0;
-    while (arguments[index] != NULL)
+    if (index > 0)
     {
-        // If a redirection character is found, return index
-        if(!strcmp(arguments[index], ">") || !strcmp(arguments[index], "<"))
-        {
-            return index;
-        }
-        index++;
-    }
-    // If a redirection character was not found, return -1
-    return -1;
-}
+        char* inputFileName = arguments[index + 1];
 
+        // open source file
+        *source = open(inputFileName, O_RDONLY);
+        if (*source == -1)
+        {
+            perror("cannot open source for input\n");
+            exit(1);
+        }
+        fcntl(*source, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
+        // redirect stdin to source
+        int result = dup2(*source, 0);
+        if (result == -1)
+        {
+            perror("dup2(source, 0) has failed\n");
+            exit(1);
+        }
+
+        // Setup Argument for Execution if Redirection Successful
+        if (*source != -1 && result != -1)
+        {
+            arguments[index] = '\0';
+        }
+    }
+}
+void redirectOutSetup(int index, int* target, char** arguments)
+{
+    if (index > 0)
+    {
+        char* outputFileName = arguments[index + 1];
+
+        // open target file
+        *target = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (*target == -1)
+        {
+            perror("cannot open target for output\n");
+            exit(2);
+        }
+        fcntl(*target, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
+        // redirect stdin to source
+        int result = dup2(*target, 1);
+        if (result == -1)
+        {
+            perror("dup2(target, 1) has failed\n");
+            exit(2);
+        }
+        // Setup Argument for Execution if Redirection Successful
+        if (*target != -1 && result != -1)
+        {
+            arguments[index] = '\0';
+        }
+    }
+}
 int executeCmd(char** arguments)
 {
     if (execvp(*arguments, arguments) < 0)
@@ -61,21 +106,22 @@ int smallsh_exec(char** arguments)
         // Execute Command If Child
         case 0:
         {
-            // Check For Redirection
-            int redirectIndex;
-            if((redirectIndex = checkRedirect(arguments)) > 0)
-            {
-                // TODO: Setup Redirect
-                // TODO: Perform Action
+            int source = -3,    // The Source File Descriptor
+                target = -3,    // The Target File Descriptor
+                redirectInIndex = checkRedirectIn(arguments),   // Index of "<" character
+                redirectOutIndex = checkRedirectOut(arguments); // Index of ">" character
 
-            }
-            // Otherwise Just Perform the Command
-            else
+            // Setup Redirection if Redirection Detected
+            if (redirectInIndex > 0 || redirectOutIndex > 0)
             {
-                executeCmd(arguments);   
+                // If Valid, Setup stdin
+                redirectInSetup(redirectInIndex, &source, arguments);
+                // If Valid, Setup stdout
+                redirectOutSetup(redirectOutIndex, &target, arguments);
             }
-            // Run Exec On Command
-            exit(2);
+            // Execute the Command
+            executeCmd(arguments);
+            exit(3);
             break;
         }
         // Let Parent Process Continue Running
@@ -100,7 +146,7 @@ int main()
         writePrompt();
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
-        checkInput(input, arguments, &exitStatus);
+        checkInput(input, arguments, &exitStatus);  // Check and Perform Command
 
         cleanInput(&input);                         // Deallocate Memory for Input
         resetArguments(arguments);                  // Reset all arguments to NULL
@@ -210,4 +256,29 @@ void smallsh_exit(char* input)
     
     // Terminate
     exit(0);
+}
+
+int _findString(char** array, char* string)
+{
+    int count = 0;
+    while (array[count] != NULL)
+    {
+        // printf("%d: '%s'\n", count, array[count]);
+        if(!strcmp(array[count], string))
+        {
+            return count;
+        }
+        count++;
+    }
+    return -1;
+}
+
+int checkRedirectOut(char** arguments)
+{
+    return _findString(arguments, ">");
+}
+
+int checkRedirectIn(char** arguments)
+{
+    return _findString(arguments, "<");
 }
