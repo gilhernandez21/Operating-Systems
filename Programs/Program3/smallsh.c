@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 
 #define SMALLSH_MAX_ARGS 512
+#define SMALLSH_MAX_CHAR 2048
 
 /* PROTOTYPES **/
 // Display Prompt
@@ -17,6 +18,7 @@ void getInput(char** inputPtr, size_t* bufferPtr);
 void tokenizeInput(char* input, char** arguments);
 // Check and Process Commands
 int checkInput(char* input, char** arguments, int* exitStatus);
+void replacePID(char* input);
 // Redirection Functions
 int _findString(char** array, char* string);
 int checkRedirectOut(char** arguments);
@@ -45,6 +47,7 @@ int main()
     {
         writePrompt();
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
+        replacePID(input);                          // Expand $$ into Process ID of shell
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
         checkInput(input, arguments, &exitStatus);  // Check and Perform Command
 
@@ -103,10 +106,42 @@ int checkInput(char* input, char** arguments, int* exitStatus)
         {
             smallsh_exec(arguments);
         }
-        
     }
 
     return 1;
+}
+
+void replacePID(char* input)
+{
+    // Set Pointers
+    char* ptr = input, *lastPtr = input;
+
+    // Get the Process ID
+    char processID[22];
+    sprintf(processID, "%ld", (long)getpid());
+    int pidLength = strlen(processID);
+
+    // Initialize Buffer
+    char buffer[SMALLSH_MAX_CHAR];
+    char* bufferPtr = &buffer[0];
+
+    // Repeat until "$$" is no longer found
+    while(ptr = strstr(ptr, "$$"))
+    {
+        // Copy Previous Characters
+        memcpy(bufferPtr, lastPtr, (ptr - lastPtr));
+        bufferPtr += (ptr - lastPtr);
+
+        // Insert pid
+        memcpy(bufferPtr, processID, pidLength);
+        bufferPtr += pidLength;
+
+        // Increase Pointers past $$s
+        lastPtr = ptr += sizeof(char) * 2;
+    }
+
+    strcpy(bufferPtr, lastPtr); // Add remaining text
+    strcpy(input, buffer);      // Move buffer to input
 }
 
 void resetArguments(char** arguments)
@@ -260,6 +295,7 @@ int smallsh_exec(char** arguments)
 
     // Fork a Child
     spawnPid = fork();
+
     switch (spawnPid)
     {
         // Send Error if Fork Failed.
