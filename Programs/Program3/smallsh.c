@@ -28,6 +28,9 @@ void redirectOutSetup(int index, int* target, char** arguments);
 // Execution Functions
 int executeCmd(char** arguments);
 int smallsh_exec(char** arguments);
+// Background/Foreground Functions
+int isBackground(char** arguments);
+void savePID(pid_t** array, int* size, pid_t input);
 // Built-In Functions
 void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
@@ -39,15 +42,19 @@ void cleanInput(char** inputPtr);
 int main()
 {
     int exitStatus = 0;
+    // Input Variables
     size_t bufferSize = 0;
     char* input = NULL;                 // User Input from stdin
-    char* arguments[SMALLSH_MAX_ARGS];  // Arguments for User Command
+    char* arguments[SMALLSH_MAX_ARGS];  // Arguments for User Command;
+    // Background Variables
+    int numBackPIDs = 0;
+    pid_t* backPIDs;
 
     do
     {
         writePrompt();
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
-        replacePID(input);                          // Expand $$ into Process ID of shell
+        replacePID(input);                          // Expand $$ into Process ID of Shell
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
         checkInput(input, arguments, &exitStatus);  // Check and Perform Command
 
@@ -229,7 +236,8 @@ void redirectInSetup(int index, int* source, char** arguments)
         *source = open(inputFileName, O_RDONLY);
         if (*source == -1)
         {
-            perror("cannot open source for input\n");
+            printf("cannot open source for input\n");
+            fflush(stdout);
             exit(1);
         }
         fcntl(*source, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
@@ -259,7 +267,8 @@ void redirectOutSetup(int index, int* target, char** arguments)
         *target = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (*target == -1)
         {
-            perror("cannot open target for output\n");
+            printf("cannot open target for output\n");
+            fflush(stdout);
             exit(2);
         }
         fcntl(*target, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
@@ -293,6 +302,9 @@ int smallsh_exec(char** arguments)
     pid_t spawnPid = -3;
     int childExitMethod = -3;
 
+    // Check if Background Command
+    int backCmd = isBackground(arguments);
+
     // Fork a Child
     spawnPid = fork();
 
@@ -307,12 +319,11 @@ int smallsh_exec(char** arguments)
         // Execute Command If Child
         case 0:
         {
+            // Setup Redirection if Redirection Detected
             int source = -3,    // The Source File Descriptor
                 target = -3,    // The Target File Descriptor
                 redirectInIndex = checkRedirectIn(arguments),   // Index of "<" character
                 redirectOutIndex = checkRedirectOut(arguments); // Index of ">" character
-
-            // Setup Redirection if Redirection Detected
             if (redirectInIndex > 0 || redirectOutIndex > 0)
             {
                 // If Valid, Setup stdin
@@ -328,9 +339,58 @@ int smallsh_exec(char** arguments)
         // Let Parent Process Continue Running
         default:
         {
+            // If Foreground Command, wait for completion
             pid_t actualPid = waitpid(spawnPid, &childExitMethod, 0);
+            // TODO: If Background, continue
+            
             return 0;
             break;
         }
     }
+}
+
+void savePID(pid_t** array, int* size, pid_t input)
+{
+    // If the array has values, create space for a new one.
+    if (*size > 0)
+    {
+        // Allocate Memory for Temp Array
+        pid_t* tempArray = malloc((*size + 1) * sizeof(pid_t));
+        // Add Previous Values to Temp Array
+        int index;
+        for (index = 0; index < *size; index++)
+        {
+            tempArray[index] = (*array)[index];
+        }
+        // Add Input to Temp Array
+        tempArray[*size] = input;
+        // Deallocate Memory for Array
+        free(*array);
+        // Set Array to tempArray
+        *array = tempArray;
+    }
+    // If the array is empty
+    else
+    {
+        (*array)[0] = input;
+    }
+    // Increment the size of the array
+    (*size)++;
+}
+
+int isBackground(char** arguments)
+{
+    // Get the Last Index
+    int index;
+    for(index = 0; arguments[index]; index++)
+    {
+        continue;
+    }
+    index--;
+    // Check if Last Argument is &
+    if (!strcmp(arguments[index], "&"))
+    {
+        return 1;
+    }
+    return 0;
 }
