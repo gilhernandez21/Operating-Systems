@@ -31,6 +31,7 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
 // Background/Foreground Functions
 int isBackground(char** arguments);
 void savePID(pid_t** array, int* size, pid_t input);
+void waitChildren(pid_t* array, int size);
 // Built-In Functions
 void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
@@ -60,6 +61,7 @@ int main()
 
         cleanInput(&input);                         // Deallocate Memory for Input
         resetArguments(arguments);                  // Reset all arguments to NULL
+        waitChildren(backPIDs, numBackPIDs);
     } while(1);
 
     return 0;
@@ -201,8 +203,8 @@ void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
     int index;
     for (index = 0; index < numPIDs; index++)
     {
-        printf("Terminating Child %d", backPIDs[index]);
-    }
+        continue;
+    } 
 
     // Deallocate background PIDs
     free(backPIDs);
@@ -349,12 +351,19 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
         // Let Parent Process Continue Running
         default:
         {
-            // If Foreground Command, wait for completion
-            pid_t actualPid = waitpid(spawnPid, &childExitMethod, 0);
-            // TODO: If Background, continue
-            
-            // Set Exit Status
-            *exitStatus = WEXITSTATUS(childExitMethod);
+            // If Foreground Command, wait for exit and store exit status
+            if (!backCmd)
+            {
+                // If Foreground Command, wait for completion
+                pid_t actualPid = waitpid(spawnPid, &childExitMethod, 0);
+                // Set Exit Status
+                *exitStatus = WEXITSTATUS(childExitMethod);
+            }
+            // If Background Command, save the PID and continue
+            else
+            {
+                savePID(backPIDs, numPIDs, spawnPid);
+            }
 
             return 0;
             break;
@@ -380,7 +389,13 @@ void savePID(pid_t** array, int* size, pid_t input)
         // Deallocate Memory for Array
         free(*array);
         // Set Array to tempArray
-        *array = tempArray;
+        *array = malloc((*size + 1) * sizeof(pid_t));
+        for (index = 0; index <= (*size); index++)
+        {
+            (*array)[index] = tempArray[index];
+        }
+        // Deallocate Temp Array
+        free(tempArray);
     }
     // If the array is empty
     else
@@ -409,4 +424,20 @@ int isBackground(char** arguments)
         return 1;
     }
     return 0;
+}
+
+void waitChildren(pid_t* array, int size)
+{
+    // Go through each child process and wait for finished children
+    int index;
+    int childExitMethod;
+    for (index = 0; index < size; index++)
+    {
+        pid_t actualPid = waitpid(array[index], &childExitMethod, WNOHANG);
+        if(actualPid && actualPid > 0)
+        {
+            printf("background pid %d is done: exit value %d\n", actualPid, WEXITSTATUS(childExitMethod));
+            fflush(stdout);
+        }
+    }
 }
