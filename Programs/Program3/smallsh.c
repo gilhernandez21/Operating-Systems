@@ -346,6 +346,7 @@ int executeCmd(char** arguments)
 {
     if (execvp(*arguments, arguments) < 0)
     {
+        // TODO: Fix Output
         perror("");
         return 2;
     }
@@ -407,9 +408,11 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
                 // Set Exit Status
                 *exitStatus = WEXITSTATUS(childExitMethod);
             }
-            // If Background Command, save the PID and continue
+            // If Background Command, print and save the PID, then continue
             else
             {
+                printf("background pid is %d\n", spawnPid);
+                fflush(stdout);
                 savePID(backPIDs, numPIDs, spawnPid);
             }
 
