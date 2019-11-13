@@ -25,6 +25,7 @@ int checkRedirectOut(char** arguments);
 int checkRedirectIn(char** arguments);
 void redirectInSetup(int index, int* source, char** arguments);
 void redirectOutSetup(int index, int* target, char** arguments);
+void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target);
 // Execution Functions
 int executeCmd(char** arguments);
 int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus);
@@ -299,6 +300,48 @@ void redirectOutSetup(int index, int* target, char** arguments)
     }
 }
 
+void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target)
+{
+    if (rInIndex < 0)
+    {
+        // Open /dev/null
+        *source = open("/dev/null", O_RDONLY);
+        if (*source == -1)
+        {
+            printf("cannot open source for input\n");
+            fflush(stdout);
+            exit(1);
+        }
+        fcntl(*source, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
+        // redirect stdin to source
+        int result = dup2(*source, 0);
+        if (result == -1)
+        {
+            perror("dup2(source, 0) has failed\n");
+            exit(1);
+        }
+    }
+    if (rOutIndex < 0)
+    {
+        // open target file
+        *target = open("/dev/null", O_WRONLY);
+        if (*target == -1)
+        {
+            printf("cannot open target for output\n");
+            fflush(stdout);
+            exit(2);
+        }
+        fcntl(*target, F_SETFD, FD_CLOEXEC);     // Close file if it is executed.
+        // redirect stdin to source
+        int result = dup2(*target, 1);
+        if (result == -1)
+        {
+            perror("dup2(target, 1) has failed\n");
+            exit(2);
+        }
+    }
+}
+
 int executeCmd(char** arguments)
 {
     if (execvp(*arguments, arguments) < 0)
@@ -342,6 +385,11 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
                 redirectInSetup(redirectInIndex, &source, arguments);
                 // If Valid, Setup stdout
                 redirectOutSetup(redirectOutIndex, &target, arguments);
+            }
+            // If its a background command, redirect to /dev/null
+            if (backCmd)
+            {
+                redirectSetupBG(redirectInIndex, redirectOutIndex, &source, &target);
             }
             // Execute the Command
             executeCmd(arguments);
