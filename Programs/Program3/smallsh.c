@@ -17,7 +17,7 @@ void writePrompt();
 void getInput(char** inputPtr, size_t* bufferPtr);
 void tokenizeInput(char* input, char** arguments);
 // Check and Process Commands
-int checkInput(char* input, char** arguments, int* exitStatus);
+int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs);
 void replacePID(char* input);
 // Redirection Functions
 int _findString(char** array, char* string);
@@ -27,14 +27,14 @@ void redirectInSetup(int index, int* source, char** arguments);
 void redirectOutSetup(int index, int* target, char** arguments);
 // Execution Functions
 int executeCmd(char** arguments);
-int smallsh_exec(char** arguments);
+int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus);
 // Background/Foreground Functions
 int isBackground(char** arguments);
 void savePID(pid_t** array, int* size, pid_t input);
 // Built-In Functions
 void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
-void smallsh_exit(char* input);
+void smallsh_exit(char* input, pid_t* backPIDs, int numPIDS);
 // Cleanup Functions
 void resetArguments(char** arguments);
 void cleanInput(char** inputPtr);
@@ -48,7 +48,7 @@ int main()
     char* arguments[SMALLSH_MAX_ARGS];  // Arguments for User Command;
     // Background Variables
     int numBackPIDs = 0;
-    pid_t* backPIDs;
+    pid_t* backPIDs = malloc(sizeof(pid_t));
 
     do
     {
@@ -56,7 +56,7 @@ int main()
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
         replacePID(input);                          // Expand $$ into Process ID of Shell
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
-        checkInput(input, arguments, &exitStatus);  // Check and Perform Command
+        checkInput(input, arguments, &exitStatus, &backPIDs, &numBackPIDs);  // Check and Perform Command
 
         cleanInput(&input);                         // Deallocate Memory for Input
         resetArguments(arguments);                  // Reset all arguments to NULL
@@ -89,7 +89,7 @@ void tokenizeInput(char* input, char** arguments)
     }
 }
 
-int checkInput(char* input, char** arguments, int* exitStatus)
+int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs)
 {
     if (arguments[0] != NULL && arguments[0][0] != '#')   // Allow Blank Lines and Comments
     {
@@ -106,12 +106,12 @@ int checkInput(char* input, char** arguments, int* exitStatus)
         // Built-in Command: 'exit'
         else if (!strcmp(arguments[0], "exit"))
         {
-            smallsh_exit(input);
+            smallsh_exit(input, *backPIDs, *numPIDs);
         }
         // Execute Command
         else
         {
-            smallsh_exec(arguments);
+            smallsh_exec(arguments, backPIDs, numPIDs, exitStatus);
         }
     }
 
@@ -192,10 +192,20 @@ void smallsh_status(int exitStatus)
     fflush(stdout);
 }
 
-void smallsh_exit(char* input)
+void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
 {
     // Cleanup
     cleanInput(&input);
+
+    // TODO: Kill any other processes or jobs
+    int index;
+    for (index = 0; index < numPIDs; index++)
+    {
+        printf("Terminating Child %d", backPIDs[index]);
+    }
+
+    // Deallocate background PIDs
+    free(backPIDs);
     
     // Terminate
     exit(0);
@@ -297,7 +307,7 @@ int executeCmd(char** arguments)
     return 0;
 }
 
-int smallsh_exec(char** arguments)
+int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus)
 {
     pid_t spawnPid = -3;
     int childExitMethod = -3;
@@ -343,6 +353,9 @@ int smallsh_exec(char** arguments)
             pid_t actualPid = waitpid(spawnPid, &childExitMethod, 0);
             // TODO: If Background, continue
             
+            // Set Exit Status
+            *exitStatus = WEXITSTATUS(childExitMethod);
+
             return 0;
             break;
         }
@@ -390,6 +403,9 @@ int isBackground(char** arguments)
     // Check if Last Argument is &
     if (!strcmp(arguments[index], "&"))
     {
+        // Clear & for Command processing
+        arguments[index] = NULL;
+        // Return True
         return 1;
     }
     return 0;
