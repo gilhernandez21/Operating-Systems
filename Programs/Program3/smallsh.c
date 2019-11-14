@@ -30,13 +30,13 @@ void redirectOutSetup(int index, int* target, char** arguments);
 void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target);
 // Execution Functions
 int executeCmd(char** arguments);
-int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus);
+int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus, struct sigaction sigact, int* termNormal);
 // Background/Foreground Functions
 int isBackground(char** arguments);
 void savePID(pid_t** array, int* size, pid_t input);
 // Built-In Functions
 void smallsh_cd(char** arguments);
-void smallsh_status(int exitStatus);
+void smallsh_status(int terminatedNormal, int exitStatus);
 void smallsh_exit(char* input, pid_t* backPIDs, int numPIDS);
 // Cleanup Functions
 void resetArguments(char** arguments);
@@ -53,6 +53,7 @@ void catchSIGINT(int signo)
 int main()
 {
     int exitStatus = 0;
+    int terminatedNormally = 1;
     // Input Variables
     size_t bufferSize = 0;
     char* input = NULL;                 // User Input from stdin
@@ -61,12 +62,12 @@ int main()
     int numBackPIDs = 0;
     pid_t* backPIDs = malloc(sizeof(pid_t));
     // Signals
-    // struct sigaction SIGINT_action = {0};
+    struct sigaction SIGINT_action = {0};
     
-    // SIGINT_action.sa_handler = catchSIGINT;
-    // sigfillset(&SIGINT_action.sa_mask);
-    // SIGINT_action.sa_flags = SA_RESTART;
-    // sigaction(SIGINT, &SIGINT_action, NULL);
+    SIGINT_action.sa_handler = SIG_IGN;
+    sigfillset(&SIGINT_action.sa_mask);
+    SIGINT_action.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &SIGINT_action, NULL);
 
 
     do
@@ -87,7 +88,7 @@ int main()
             // Built-in Command: 'status'
             else if (!strcmp(arguments[0], "status"))
             {
-                smallsh_status(exitStatus);
+                smallsh_status(terminatedNormally, exitStatus);
             }
             // Built-in Command: 'exit'
             else if (!strcmp(arguments[0], "exit"))
@@ -97,7 +98,7 @@ int main()
             // Execute Command
             else
             {
-                smallsh_exec(arguments, &backPIDs, &numBackPIDs, &exitStatus);
+                smallsh_exec(arguments, &backPIDs, &numBackPIDs, &exitStatus, SIGINT_action, &terminatedNormally);
             }
         }
 
@@ -133,34 +134,34 @@ void tokenizeInput(char* input, char** arguments)
     }
 }
 
-int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs)
-{
-    if (arguments[0] != NULL && arguments[0][0] != '#')   // Allow Blank Lines and Comments
-    {
-        // Built-in Command: 'cd'
-        if (!strcmp(arguments[0], "cd"))
-        {
-            smallsh_cd(arguments);
-        }
-        // Built-in Command: 'status'
-        else if (!strcmp(arguments[0], "status"))
-        {
-            smallsh_status(*exitStatus);
-        }
-        // Built-in Command: 'exit'
-        else if (!strcmp(arguments[0], "exit"))
-        {
-            smallsh_exit(input, *backPIDs, *numPIDs);
-        }
-        // Execute Command
-        else
-        {
-            smallsh_exec(arguments, backPIDs, numPIDs, exitStatus);
-        }
-    }
+// int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs)
+// {
+//     if (arguments[0] != NULL && arguments[0][0] != '#')   // Allow Blank Lines and Comments
+//     {
+//         // Built-in Command: 'cd'
+//         if (!strcmp(arguments[0], "cd"))
+//         {
+//             smallsh_cd(arguments);
+//         }
+//         // Built-in Command: 'status'
+//         else if (!strcmp(arguments[0], "status"))
+//         {
+//             smallsh_status(*exitStatus);
+//         }
+//         // Built-in Command: 'exit'
+//         else if (!strcmp(arguments[0], "exit"))
+//         {
+//             smallsh_exit(input, *backPIDs, *numPIDs);
+//         }
+//         // Execute Command
+//         else
+//         {
+//             smallsh_exec(arguments, backPIDs, numPIDs, exitStatus,);
+//         }
+//     }
 
-    return 1;
-}
+//     return 1;
+// }
 
 void replacePID(char* input)
 {
@@ -230,9 +231,19 @@ void smallsh_cd(char** arguments)
     // printf("%s\n", getcwd(directory, 100));  //DEBUGGING
 }
 
-void smallsh_status(int exitStatus)
+void smallsh_status(int terminatedNormally, int exitStatus)
 {
-    printf("exit value %d\n", exitStatus);
+    // Check if Child Exited Normally
+    if (terminatedNormally)
+    {
+        printf("exit value %d\n", exitStatus);
+    }
+    // Otherwise, Return Terminating Signal
+    else
+    {
+        printf("terminated by signal %d\n", exitStatus);
+    }
+    // Clear stdout
     fflush(stdout);
 }
 
@@ -394,7 +405,7 @@ int executeCmd(char** arguments)
     return 0;
 }
 
-int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus)
+int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus, struct sigaction sigact, int* termNormal)
 {
     pid_t spawnPid = -3;
     int childExitMethod = -3;
@@ -416,6 +427,13 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
         // Execute Command If Child
         case 0:
         {
+            // Set Signal Handler so Singal Terminates if its a Foreground Command
+            if (!backCmd)
+            {
+                sigact.sa_handler = SIG_DFL;
+                sigaction(SIGINT, &sigact, NULL);
+            }
+
             // Setup Redirection if Redirection Detected
             int source = -3,    // The Source File Descriptor
                 target = -3,    // The Target File Descriptor
@@ -446,8 +464,24 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
             {
                 // If Foreground Command, wait for completion
                 pid_t actualPid = waitpid(spawnPid, &childExitMethod, 0);
-                // Set Exit Status
-                *exitStatus = WEXITSTATUS(childExitMethod);
+                // If the Process Didn't Exit Normally, inform user
+                if (!WIFEXITED(childExitMethod))
+                {
+                    // Inform user
+                    printf("terminated by signal %d\n", WTERMSIG(childExitMethod));
+                    fflush(stdout);
+                    // Set Normal Termination Flag to False
+                    *termNormal = 0;
+                    // Set Exit Status
+                    *exitStatus = WTERMSIG(childExitMethod);
+                }
+                else
+                {
+                    // Set Normal Termination Flag to True
+                    *termNormal = 1;
+                    // Set Exit Status
+                    *exitStatus = WEXITSTATUS(childExitMethod);
+                }
             }
             // If Background Command, print and save the PID, then continue
             else
