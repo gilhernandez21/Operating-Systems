@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,7 +34,6 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
 // Background/Foreground Functions
 int isBackground(char** arguments);
 void savePID(pid_t** array, int* size, pid_t input);
-void waitChildren(pid_t* array, int size);
 // Built-In Functions
 void smallsh_cd(char** arguments);
 void smallsh_status(int exitStatus);
@@ -40,6 +41,14 @@ void smallsh_exit(char* input, pid_t* backPIDs, int numPIDS);
 // Cleanup Functions
 void resetArguments(char** arguments);
 void cleanInput(char** inputPtr);
+void waitChildren(pid_t* array, int size);
+
+void catchSIGINT(int signo)
+{
+    char* message = "Caught SIGINT\n";
+    write(STDOUT_FILENO, message, 14);
+    fflush(stdout);
+}
 
 int main()
 {
@@ -51,6 +60,14 @@ int main()
     // Background Variables
     int numBackPIDs = 0;
     pid_t* backPIDs = malloc(sizeof(pid_t));
+    // Signals
+    // struct sigaction SIGINT_action = {0};
+    
+    // SIGINT_action.sa_handler = catchSIGINT;
+    // sigfillset(&SIGINT_action.sa_mask);
+    // SIGINT_action.sa_flags = SA_RESTART;
+    // sigaction(SIGINT, &SIGINT_action, NULL);
+
 
     do
     {
@@ -58,7 +75,31 @@ int main()
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
         replacePID(input);                          // Expand $$ into Process ID of Shell
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
-        checkInput(input, arguments, &exitStatus, &backPIDs, &numBackPIDs);  // Check and Perform Command
+        
+        // Check and Perform Command
+        if (arguments[0] != NULL && arguments[0][0] != '#')   // Allow Blank Lines and Comments
+        {
+            // Built-in Command: 'cd'
+            if (!strcmp(arguments[0], "cd"))
+            {
+                smallsh_cd(arguments);
+            }
+            // Built-in Command: 'status'
+            else if (!strcmp(arguments[0], "status"))
+            {
+                smallsh_status(exitStatus);
+            }
+            // Built-in Command: 'exit'
+            else if (!strcmp(arguments[0], "exit"))
+            {
+                smallsh_exit(input, backPIDs, numBackPIDs);
+            }
+            // Execute Command
+            else
+            {
+                smallsh_exec(arguments, &backPIDs, &numBackPIDs, &exitStatus);
+            }
+        }
 
         cleanInput(&input);                         // Deallocate Memory for Input
         resetArguments(arguments);                  // Reset all arguments to NULL
