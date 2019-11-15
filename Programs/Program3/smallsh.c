@@ -12,14 +12,14 @@
 #define SMALLSH_MAX_ARGS 512
 #define SMALLSH_MAX_CHAR 2048
 
-/* PROTOTYPES **/
+/* PROTOTYPES */
 // Display Prompt
 void writePrompt();
 // Get and Translate User Input
 void getInput(char** inputPtr, size_t* bufferPtr);
 void tokenizeInput(char* input, char** arguments);
 // Check and Process Commands
-int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs);
+// int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs);
 void replacePID(char* input);
 // Redirection Functions
 int _findString(char** array, char* string);
@@ -42,32 +42,39 @@ void smallsh_exit(char* input, pid_t* backPIDs, int numPIDS);
 void resetArguments(char** arguments);
 void cleanInput(char** inputPtr);
 void waitChildren(pid_t* array, int size);
+// Signal Action
+void catchSIGTSTP(int signo);
 
-void catchSIGINT(int signo)
-{
-    char* message = "Caught SIGINT\n";
-    write(STDOUT_FILENO, message, 14);
-    fflush(stdout);
-}
+/* GLOBAL VARIABLES */
+int backgroundEnabled = 1;          // Flag for if background commands are enabled
 
 int main()
 {
-    int exitStatus = 0;
-    int terminatedNormally = 1;
+    int exitStatus = 0;                 // The Exit Value of the Last Foreground Command
+    int terminatedNormally = 1;         // Flag for if the last foreground command terminated normally
+    // int backgroundEnabled = 1;          // Flag for if background commands are enabled
     // Input Variables
-    size_t bufferSize = 0;
+    size_t bufferSize = 0;              // Buffer size of the input
     char* input = NULL;                 // User Input from stdin
     char* arguments[SMALLSH_MAX_ARGS];  // Arguments for User Command;
     // Background Variables
     int numBackPIDs = 0;
     pid_t* backPIDs = malloc(sizeof(pid_t));
     // Signals
-    struct sigaction SIGINT_action = {0};
+    struct sigaction SIGINT_action = {0};   // SIGINT
+    struct sigaction SIGTSTP_action = {0};  // SIGTSTP
     
+    // Initialize SIGINT_action
     SIGINT_action.sa_handler = SIG_IGN;
     sigfillset(&SIGINT_action.sa_mask);
     SIGINT_action.sa_flags = SA_RESTART;
     sigaction(SIGINT, &SIGINT_action, NULL);
+
+    // Initialize SIGTSTP_action
+    SIGTSTP_action.sa_handler = catchSIGTSTP;
+    sigfillset(&SIGTSTP_action.sa_mask);
+    SIGTSTP_action.sa_flags = SA_RESTART;
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
 
     do
@@ -546,8 +553,13 @@ int isBackground(char** arguments)
     {
         // Clear & for Command processing
         arguments[index] = NULL;
-        // Return True
-        return 1;
+        
+        // If background commands enabled
+        if(backgroundEnabled)
+        {
+            // Show that background commands are present
+            return 1;
+        }
     }
     return 0;
 }
@@ -566,4 +578,21 @@ void waitChildren(pid_t* array, int size)
             fflush(stdout);
         }
     }
+}
+
+void catchSIGTSTP(int signo)
+{
+    if(backgroundEnabled)
+    {
+        backgroundEnabled = 0;
+        char* message = "\nEntering foreground-only mode (& is now ignored)\n: ";
+        write(STDOUT_FILENO, message, 52);
+    }
+    else
+    {
+        backgroundEnabled = 1;
+        char* message = "\nExiting foreground-only mode\n: ";
+        write(STDOUT_FILENO, message, 32);
+    }
+    fflush(stdout);
 }
