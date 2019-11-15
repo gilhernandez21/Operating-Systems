@@ -1,3 +1,21 @@
+/*********************************************************************
+** Program name:    smallsh
+** Author:          Herbert Diaz <diazh@oregonstate.edu>
+** Date:            11/15/2019
+** Description:     Program 3 for CS344 Operating Systems @ OSU
+**  Program Function:
+**      This program is a shell that runs command line instructions.
+**      The shell features 3 built-in functions: status (which prints
+**      the exit status of the last foreground process), cd (which
+**      changes the current working directory), and exit (which
+**      terminates all remaining processes and exits the program).
+**      Furthermore, this program catches SIGINT and SIGTSTP signals,
+**      with SIGINT signals terminating the foreground process, and
+**      SIGTSTP signals toggling background commands.
+**  To Run:
+**      Run makefile and run "smallsh" on terminal.
+**      If no makefile, compile with "gcc -o smallsh smallsh.c"
+*********************************************************************/
 #define _GNU_SOURCE
 
 #include <fcntl.h>
@@ -65,13 +83,13 @@ int main()
     struct sigaction SIGTSTP_action = {0};  // SIGTSTP
     
     // Initialize SIGINT_action
-    SIGINT_action.sa_handler = SIG_IGN;
+    SIGINT_action.sa_handler = SIG_IGN;     // Disable SIGINT signal
     sigfillset(&SIGINT_action.sa_mask);
     SIGINT_action.sa_flags = SA_RESTART;
     sigaction(SIGINT, &SIGINT_action, NULL);
 
     // Initialize SIGTSTP_action
-    SIGTSTP_action.sa_handler = catchSIGTSTP;
+    SIGTSTP_action.sa_handler = catchSIGTSTP;// SIGTSTP signal toggles background
     sigfillset(&SIGTSTP_action.sa_mask);
     SIGTSTP_action.sa_flags = SA_RESTART;
     sigaction(SIGTSTP, &SIGTSTP_action, NULL);
@@ -80,6 +98,7 @@ int main()
     do
     {
         writePrompt();
+        // Process Input
         getInput(&input, &bufferSize);              // Get Input and Allocate Memory
         replacePID(input);                          // Expand $$ into Process ID of Shell
         tokenizeInput(input, arguments);            // Tokenize Input and Put into Arguments Array
@@ -109,30 +128,52 @@ int main()
             }
         }
 
+        // Cleanup
         cleanInput(&input);                         // Deallocate Memory for Input
         resetArguments(arguments);                  // Reset all arguments to NULL
-        waitChildren(backPIDs, numBackPIDs);
+        waitChildren(backPIDs, numBackPIDs);        // Check if Children are Finished.
     } while(1);
 
     return 0;
 }
 
+/*********************************************************************
+ * void writePrompt()
+ *  Shows the user that the program is taking commands
+*********************************************************************/
 void writePrompt()
 {
     printf(": ");
     fflush(stdout);
 }
 
+/*********************************************************************
+ * void getInput(char** inputPtr, size_t* bufferPtr)
+ *  Gets and stores user input
+ * Arguments:
+ *  char** inputPtr = Pointer to where the user input should be stored
+ *  size_t* bufferPtr = Pointer to the buffer size
+*********************************************************************/
 void getInput(char** inputPtr, size_t* bufferPtr)
 {
+    // Get input
     int numChars = getline(inputPtr, bufferPtr, stdin);
+    // Remove trailling newline character
     (*inputPtr)[numChars - 1] = '\0';
 }
 
+/*********************************************************************
+ * void tokenizeInput(char* input, char** arguments)
+ *  Splits the user input into an array
+ * Arguments:
+ *  char* input = The user's original input
+ *  char** arguments = Where the split user input should be stored.
+*********************************************************************/
 void tokenizeInput(char* input, char** arguments)
 {
     char* charPtr = input;
 
+    // Tokenize the entire input
     int counter = 0;
     while ((arguments[counter] = strtok(charPtr, " ")) != NULL)
     {
@@ -141,6 +182,12 @@ void tokenizeInput(char* input, char** arguments)
     }
 }
 
+/*********************************************************************
+ * void replacePID(char* input)
+ *  Replaces "$$" with the Process ID
+ * Arguments:
+ *  char* input = The string to replace $$ values
+*********************************************************************/
 void replacePID(char* input)
 {
     // Set Pointers
@@ -174,6 +221,12 @@ void replacePID(char* input)
     strcpy(input, buffer);      // Move buffer to input
 }
 
+/*********************************************************************
+ * void resetArguments(char** arguments)
+ *  Resets all the arguments by making them NULL
+ * Arguments:
+ *  char** arguments = The array of strings to reset
+*********************************************************************/
 void resetArguments(char** arguments)
 {
     int counter = 0;
@@ -184,12 +237,24 @@ void resetArguments(char** arguments)
     }
 }
 
+/*********************************************************************
+ * void cleanInput(char** inputPtr)
+ *  Deallocates the input, freeing the memory
+ * Arguments:
+ *  char** input = The input to clear
+*********************************************************************/
 void cleanInput(char** inputPtr)
 {
     free(*inputPtr);
     (*inputPtr) = NULL;
 }
 
+/*********************************************************************
+ * void smallsh_cd(char** arguments)
+ *  Changes the current working directory
+ * Arguments:
+ *  char** arguments = The Tokenized Command to Process
+*********************************************************************/
 void smallsh_cd(char** arguments)
 {
     // char directory[100]                      //DEBUGGING
@@ -209,6 +274,14 @@ void smallsh_cd(char** arguments)
     // printf("%s\n", getcwd(directory, 100));  //DEBUGGING
 }
 
+/*********************************************************************
+ * void smallsh_status(int terminatedNormally, int exitStatus)
+ *  Prints the exit status of the last foreground command
+ * Arguments:
+ *  int terminatedNormally - Indicates whether last command terminated
+ *      normally, or via a signal (1 - Normal, 0 - Signal)
+ *  int exitStatus - the value of the last exit command
+*********************************************************************/
 void smallsh_status(int terminatedNormally, int exitStatus)
 {
     // Check if Child Exited Normally
@@ -225,6 +298,14 @@ void smallsh_status(int terminatedNormally, int exitStatus)
     fflush(stdout);
 }
 
+/*********************************************************************
+ * void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
+ *  Cleans up and Exits the Program
+ * Arguments:
+ *  char* input - The input to clean
+ *  pid_t* backPids - Array of all the background processes
+ *  int numPids - The number of background processes
+*********************************************************************/
 void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
 {
     // Cleanup
@@ -251,31 +332,66 @@ void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
     exit(0);
 }
 
+/*********************************************************************
+ * int _findString(char** array, char* string)
+ *  Goes through an array, returning the index of the string if found.
+ * Arguments:
+ *  char** array - The array to search
+ *  char* string - The string to find
+ * Returns:
+ *  Int = If Found, Index of String. Otherwise -1.
+*********************************************************************/
 int _findString(char** array, char* string)
 {
+    // Go through the entire array
     int count = 0;
     while (array[count] != NULL)
     {
-        // printf("%d: '%s'\n", count, array[count]);
+        // If the string is found, return the index
         if(!strcmp(array[count], string))
         {
             return count;
         }
         count++;
     }
+    // Otherwise, return -1
     return -1;
 }
 
+/*********************************************************************
+ * int checkRedirectOut(char** arguments)
+ *  _findString function, specifically searching for ">"
+ * Arguments:
+ *  char** arguments = The tokenized command
+ * Returns:
+ *  Int = If Found, Index of String. Otherwise -1.
+*********************************************************************/
 int checkRedirectOut(char** arguments)
 {
     return _findString(arguments, ">");
 }
 
+/*********************************************************************
+ * int checkRedirectIn(char** arguments)
+ *  _findString function, specifically searching for "<"
+ * Arguments:
+ *  char** arguments = The tokenized command
+ * Returns:
+ *  Int = If Found, Index of String. Otherwise -1.
+*********************************************************************/
 int checkRedirectIn(char** arguments)
 {
     return _findString(arguments, "<");
 }
 
+/*********************************************************************
+ * void redirectInSetup(int index, int* source, char** arguments)
+ *  Redirects stdin to a file
+ * Arguments:
+ *  int index = Index of the "<" character in the arguments
+ *  int* source = The file descriptor of the input file
+ *  char** arguments = The tokenized command
+*********************************************************************/
 void redirectInSetup(int index, int* source, char** arguments)
 {
     if (index > 0)
@@ -307,6 +423,14 @@ void redirectInSetup(int index, int* source, char** arguments)
     }
 }
 
+/*********************************************************************
+ * void redirectOutSetup(int index, int* target, char** arguments)
+ *  Redirects stdout to a file
+ * Arguments:
+ *  int index = Index of the ">" character in the arguments
+ *  int* target = The file descriptor of the output file
+ *  char** arguments = The tokenized command
+*********************************************************************/
 void redirectOutSetup(int index, int* target, char** arguments)
 {
     if (index > 0)
@@ -337,6 +461,16 @@ void redirectOutSetup(int index, int* target, char** arguments)
     }
 }
 
+/*********************************************************************
+ * void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target)
+ *  Redirects stdout and stdin to /dev/null if no other redirection
+ *  detected.
+ * Arguments:
+ *  int rInIndex = The Index of the "<" argument
+ *  int rOutIndex = The Index of the ">" argument
+ *  int* source = The file descriptor of the source file.
+ *  int* target = The file descriptor of the target file.
+*********************************************************************/
 void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target)
 {
     if (rInIndex < 0)
@@ -379,19 +513,48 @@ void redirectSetupBG(int rInIndex, int rOutIndex, int* source, int* target)
     }
 }
 
+/*********************************************************************
+ * int executeCmd(char** arguments)
+ *  Executes a command.
+ * Arguments:
+ *  char** arguments: The tokenized command
+ * Returns:
+ *  int = 0 on successful execution, 2 otherwise
+*********************************************************************/
 int executeCmd(char** arguments)
 {
+    // If execvp failed, print out error and return 2.
     if (execvp(*arguments, arguments) < 0)
     {
-        // TODO: Fix Output
         printf("%s: no such file or directory\n", arguments[0]);
         fflush(stdout);
         return 2;
     }
+    // Otherwise sucessful and return 0.
     return 0;
 }
 
-int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStatus, struct sigaction sigact, int* termNormal)
+/*********************************************************************
+ * int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, 
+ *                  int* exitStatus, struct sigaction sigact, 
+ *                  int* termNormal)
+ *  Spawns a fork and executes a command. Command may be excuted in
+ *  fore ground or background.
+ *  Arguments:
+ *      char** arguments = The Tokenized Input
+ *      pid_t** backPIDs = Pointer to Array of Background Processes
+ *      int* numPIDs = Pointer to the Number of Background Processes
+ *      int* exitStatus = Pointer to the Last Foreground Exit Status
+ *      struct sigaction sigact = The singal handler for background
+ *          processes.
+ *      int* termNormal = Whether the last signal terminated normally
+ *          or not.
+ *  Return:
+ *      int = 0 if parent process completed.
+*********************************************************************/
+int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, 
+                 int* exitStatus, struct sigaction sigact, 
+                 int* termNormal)
 {
     pid_t spawnPid = -3;
     int childExitMethod = -3;
@@ -483,6 +646,14 @@ int smallsh_exec(char** arguments, pid_t** backPIDs, int* numPIDs, int* exitStat
     }
 }
 
+/*********************************************************************
+ * void savePID(pid_t** array, int* size, pid_t input)
+ *  Saves the background process into an array
+ * Arguments:
+ *  pid_t** array = pointer to the array of background process ids
+ *  int* size = pointer to the size of the array
+ *  pid_t input = the process id to add to the array
+*********************************************************************/
 void savePID(pid_t** array, int* size, pid_t input)
 {
     // If the array has values, create space for a new one.
@@ -518,6 +689,14 @@ void savePID(pid_t** array, int* size, pid_t input)
     (*size)++;
 }
 
+/*********************************************************************
+ * int isBackground(char** arguments)
+ *  Determines if command is a background command
+ * Arguments:
+ *  char** arguments = the tokenized command
+ * Returns:
+ *  int = 1 if it's a background command, otherwise 0
+*********************************************************************/
 int isBackground(char** arguments)
 {
     // Get the Last Index
@@ -543,6 +722,14 @@ int isBackground(char** arguments)
     return 0;
 }
 
+/*********************************************************************
+ * void waitChildren(pid_t* array, int size)
+ *  Checks the status of the background processes and collects if
+ *  they are completed.
+ * Arguments:
+ *  pid_t* array = the array of background process ids
+ *  int size = the size of the array
+*********************************************************************/
 void waitChildren(pid_t* array, int size)
 {
     // Go through each child process and wait for finished children
@@ -576,6 +763,10 @@ void waitChildren(pid_t* array, int size)
     }
 }
 
+/*********************************************************************
+ * void catchSIGTSTP(int signo)
+ *  Toggles background commands - Used by Signal Catcher
+*********************************************************************/
 void catchSIGTSTP(int signo)
 {
     // Disable Background if it's Enabled
