@@ -141,35 +141,6 @@ void tokenizeInput(char* input, char** arguments)
     }
 }
 
-// int checkInput(char* input, char** arguments, int* exitStatus, pid_t** backPIDs, int* numPIDs)
-// {
-//     if (arguments[0] != NULL && arguments[0][0] != '#')   // Allow Blank Lines and Comments
-//     {
-//         // Built-in Command: 'cd'
-//         if (!strcmp(arguments[0], "cd"))
-//         {
-//             smallsh_cd(arguments);
-//         }
-//         // Built-in Command: 'status'
-//         else if (!strcmp(arguments[0], "status"))
-//         {
-//             smallsh_status(*exitStatus);
-//         }
-//         // Built-in Command: 'exit'
-//         else if (!strcmp(arguments[0], "exit"))
-//         {
-//             smallsh_exit(input, *backPIDs, *numPIDs);
-//         }
-//         // Execute Command
-//         else
-//         {
-//             smallsh_exec(arguments, backPIDs, numPIDs, exitStatus,);
-//         }
-//     }
-
-//     return 1;
-// }
-
 void replacePID(char* input)
 {
     // Set Pointers
@@ -259,11 +230,18 @@ void smallsh_exit(char* input, pid_t* backPIDs, int numPIDs)
     // Cleanup
     cleanInput(&input);
 
-    // TODO: Kill any other processes or jobs
+    // Go through all the background processes
     int index;
     for (index = 0; index < numPIDs; index++)
     {
-        continue;
+        // Check if process is still running
+        int childExitMethod;
+        pid_t actualPid = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
+        // If its running, kill the signal
+        if(!actualPid)
+        {
+            kill(backPIDs[index], SIGKILL);
+        }
     } 
 
     // Deallocate background PIDs
