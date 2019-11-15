@@ -286,7 +286,7 @@ void redirectInSetup(int index, int* source, char** arguments)
         *source = open(inputFileName, O_RDONLY);
         if (*source == -1)
         {
-            printf("cannot open source for input\n");
+            printf("cannot open %s for input\n", inputFileName);
             fflush(stdout);
             exit(1);
         }
@@ -317,7 +317,7 @@ void redirectOutSetup(int index, int* target, char** arguments)
         *target = open(outputFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (*target == -1)
         {
-            printf("cannot open target for output\n");
+            printf("cannot open %s for output\n", outputFileName);
             fflush(stdout);
             exit(2);
         }
@@ -384,7 +384,8 @@ int executeCmd(char** arguments)
     if (execvp(*arguments, arguments) < 0)
     {
         // TODO: Fix Output
-        perror("");
+        printf("%s: no such file or directory\n", arguments[0]);
+        fflush(stdout);
         return 2;
     }
     return 0;
@@ -552,7 +553,24 @@ void waitChildren(pid_t* array, int size)
         pid_t actualPid = waitpid(array[index], &childExitMethod, WNOHANG);
         if(actualPid && actualPid > 0)
         {
-            printf("background pid %d is done: exit value %d\n", actualPid, WEXITSTATUS(childExitMethod));
+            // Inform pid has been terminated
+            printf("background pid %d is done: ", actualPid);
+            fflush(stdout);
+            // Get the Exit method
+            int terminationStatus = WIFEXITED(childExitMethod);
+            int exitStatus;
+            // Get the Exit Status, depending on termination status
+            if (terminationStatus)
+            {
+                exitStatus = WEXITSTATUS(childExitMethod);
+            }
+            else
+            {
+                exitStatus = WTERMSIG(childExitMethod);
+            }
+            // Print the status
+            smallsh_status(terminationStatus, exitStatus);
+            
             fflush(stdout);
         }
     }
@@ -560,12 +578,14 @@ void waitChildren(pid_t* array, int size)
 
 void catchSIGTSTP(int signo)
 {
+    // Disable Background if it's Enabled
     if(backgroundEnabled)
     {
         backgroundEnabled = 0;
         char* message = "\nEntering foreground-only mode (& is now ignored)\n: ";
         write(STDOUT_FILENO, message, 52);
     }
+    // Enable Background if it's Disabled
     else
     {
         backgroundEnabled = 1;
