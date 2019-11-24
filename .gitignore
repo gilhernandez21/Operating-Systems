@@ -65,3 +65,11 @@ Programs/Program2/diazh.rooms.*/
 p3testscript
 Programs/Program3/smallsh
 *.zip
+
+# PROGRAM 4
+otp_enc
+otp_enc_d
+otp_dec
+otp_dec_d
+keygen
+p4gradingscript
