@@ -1,0 +1,7 @@
+#!/bin/bash
+
+function keygen_compile(){
+    gcc keygen.c keygen.h -o keygen
+}
+
+keygen_compile
