@@ -5,11 +5,16 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
+#include <sys/ioctl.h>
 
 #define h_addr h_addr_list[0]
 
 void error(const char *msg) { perror(msg); exit(0); } // Error function used for reporting issues
+
+// File Validation
+int checkFile(char* fileName);
+void validateFiles(char* plaintext, char* key);
 
 int main(int argc, char *argv[])
 {
@@ -18,14 +23,17 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char buffer[256];
     
-	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
+	if (argc < 4) { fprintf(stderr,"USAGE: %s [plaintext] [key] [port]\n", argv[0]); exit(0); } // Check usage & args
+
+	// Check files for bad characters and proper lengths
+	validateFiles(argv[1], argv[2]);
 
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
-	portNumber = atoi(argv[2]); // Get the port number, convert to an integer from a string
+	portNumber = atoi(argv[3]); // Get the port number, convert to an integer from a string
 	serverAddress.sin_family = AF_INET; // Create a network-capable socket
 	serverAddress.sin_port = htons(portNumber); // Store the port number
-	serverHostInfo = gethostbyname(argv[1]); // Convert the machine name into a special form of address
+	serverHostInfo = gethostbyname("localhost"); // Convert the machine name into a special form of address
 	if (serverHostInfo == NULL) { fprintf(stderr, "CLIENT: ERROR, no such host\n"); exit(0); }
 	memcpy((char*)&serverAddress.sin_addr.s_addr, (char*)serverHostInfo->h_addr, serverHostInfo->h_length); // Copy in the address
 
@@ -37,11 +45,9 @@ int main(int argc, char *argv[])
 	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
 		error("CLIENT: ERROR connecting");
 
-	// Get input message from user
-	printf("CLIENT: Enter text to send to the server, and then hit enter: ");
+	// Send Verifier
 	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-	fgets(buffer, sizeof(buffer) - 1, stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
-	buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
+	strcpy(buffer, "OTP_ENC");
 
 	// Send message to server
 	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
@@ -56,4 +62,46 @@ int main(int argc, char *argv[])
 
 	close(socketFD); // Close the socket
 	return 0;
+}
+
+int checkFile(char* fileName)
+{
+    int character;  // holds the integer value of the character
+    int count = 0;  // holds the number of characters in the file
+
+    // Open the file
+    FILE* fileInput = fopen(fileName, "r");
+    // Check if valid
+    if (fileInput == NULL) { fprintf(stderr,"ERROR failed to open '%s'\n", fileName); exit(1); }
+
+    // Go through the file
+    while ((character = fgetc(fileInput)) != EOF)
+    {
+        // If an invalid character is detected, print error and exit
+        if ((character < 'A' || character > 'Z') && character != ' ' && character != '\n')
+        {
+            fprintf(stderr,"ERROR '%s' contains invalid characters\n", fileName);
+            exit(1);
+        }
+        count++;
+    }
+
+    // Close the file
+    fclose(fileInput);
+
+    return count;
+}
+
+void validateFiles(char* plaintext, char* key)
+{
+    // Check if files are valid and record number of characters
+    int plaintextCount = checkFile(plaintext);
+    int keyCount = checkFile(key);
+
+    // If the key file is shorter than the plaintext, terminate and send error
+    if (keyCount < plaintextCount)
+    {
+        fprintf(stderr, "ERROR key file '%s' shorter than plaintext '%s'\n", key, plaintext);
+        exit(1);
+    }
 }
