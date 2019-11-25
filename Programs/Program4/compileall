@@ -4,4 +4,14 @@ function keygen_compile(){
     gcc keygen.c keygen.h -o keygen
 }
 
+function otp_enc_d_compile(){
+    gcc otp_enc_d.c -o otp_enc_d
+}
+
+function otp_enc_compile(){
+    gcc otp_enc.c -o otp_enc
+}
+
 keygen_compile
+otp_enc_d_compile
+otp_enc_compile
