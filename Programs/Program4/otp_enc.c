@@ -9,19 +9,25 @@
 #include <sys/ioctl.h>
 
 #define h_addr h_addr_list[0]
+#define OTP_BUFFERSIZE 256
 
-void error(const char *msg) { perror(msg); exit(0); } // Error function used for reporting issues
+void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
 // File Validation
 int checkFile(char* fileName);
 void validateFiles(char* plaintext, char* key);
 
+int sendMessage(char buffer[], char* message, int socketFD);
+int getResponse(char buffer[], int socketFD);
+
 int main(int argc, char *argv[])
 {
+	char* clientVerifier = "OTP_ENC";
+
 	int socketFD, portNumber, charsWritten, charsRead;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
-	char buffer[256];
+	char buffer[OTP_BUFFERSIZE];
     
 	if (argc < 4) { fprintf(stderr,"USAGE: %s [plaintext] [key] [port]\n", argv[0]); exit(0); } // Check usage & args
 
@@ -45,20 +51,30 @@ int main(int argc, char *argv[])
 	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
 		error("CLIENT: ERROR connecting");
 
-	// Send Verifier
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-	strcpy(buffer, "OTP_ENC");
+	// Send verifier to server and get response
+	sendMessage(buffer, clientVerifier, socketFD);
+	getResponse(buffer, socketFD);
+	// If server sends unsuccessful response, print error and exit.
+	if (atoi(buffer) != 200)
+	{
+		fprintf(stderr, "ERROR: Cannot connect to server on port: %d\n", portNumber);
+		exit(2);
+	}
 
-	// Send message to server
-	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	// // Send Verifier
+	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
+	// strcpy(buffer, "OTHER MESSAGE");
 
-	// Get return message from server
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+	// // Send message to server
+	// charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
+	// if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	// if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+
+	// // Get return message from server
+	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
+	// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
+	// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
+	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
 
 	close(socketFD); // Close the socket
 	return 0;
@@ -104,4 +120,29 @@ void validateFiles(char* plaintext, char* key)
         fprintf(stderr, "ERROR key file '%s' shorter than plaintext '%s'\n", key, plaintext);
         exit(1);
     }
+}
+
+int sendMessage(char buffer[], char* message, int socketFD)
+{
+	int charsWritten;
+
+	memset(buffer, '\0', OTP_BUFFERSIZE); 	// Clear out the buffer array
+	strcpy(buffer, message);			// Set verifier
+	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
+	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	
+	return 0;
+}
+
+int getResponse(char buffer[], int socketFD)
+{
+	int charsRead;
+
+	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer again for reuse
+	charsRead = recv(socketFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read data from the socket, leaving \0 at end
+	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
+	printf("CLIENT: I received this from the server: \"%s\"\n", buffer); // DEBUGGING
+
+	return 0;
 }

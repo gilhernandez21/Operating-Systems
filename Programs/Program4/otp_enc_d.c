@@ -6,13 +6,20 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define OTP_BUFFERSIZE 256
+
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+
+int getFromClient(char buffer[], int establishedConnectionFD);
+int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
 
 int main(int argc, char *argv[])
 {
+	char* clientVerifier = "OTP_ENC";
+
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
-	char buffer[256];
+	char buffer[OTP_BUFFERSIZE];
 	struct sockaddr_in serverAddress, clientAddress;
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
@@ -40,18 +47,58 @@ int main(int argc, char *argv[])
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("ERROR on accept");
 
-		// Get the message from the client and display it
-		memset(buffer, '\0', 256);
-		charsRead = recv(establishedConnectionFD, buffer, 255, 0); // Read the client's message from the socket
-		if (charsRead < 0) error("ERROR reading from socket");
-		printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+		// Get Verifification Message from Client
+		getFromClient(buffer, establishedConnectionFD);
+		// Send result code back to the client
+		sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
 
-		// Send a Success message back to the client
-		charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-		if (charsRead < 0) error("ERROR writing to socket");
+		// Get Plaintext
+
+		// // Get the message from the client and display it
+		// memset(buffer, '\0', OTP_BUFFERSIZE);
+		// charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
+		// if (charsRead < 0) error("ERROR reading from socket");
+		// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+		// // Send a Success message back to the client
+		// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+		// if (charsRead < 0) error("ERROR writing to socket");
+
+		// Get Key File
+
 		close(establishedConnectionFD); // Close the existing socket which is connected to the client
 	} while(1);
 
 	close(listenSocketFD); // Close the listening socket
 	return 0; 
+}
+
+int getFromClient(char buffer[], int establishedConnectionFD)
+{
+	int charsRead;
+
+	memset(buffer, '\0', OTP_BUFFERSIZE);
+	charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
+	if (charsRead < 0) error("ERROR reading from socket");
+	printf("SERVER: I received this from the client: \"%s\"\n", buffer); // DEBUGGING
+
+	return 0;
+}
+int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD)
+{
+	int charsRead;
+
+	if (!strcmp(buffer, clientVerifier))
+	{
+		charsRead = send(establishedConnectionFD, "200", 3, 0); // Send success back
+		if (charsRead < 0) error("ERROR writing to socket");
+	}
+	else
+	{
+		charsRead = send(establishedConnectionFD, "403", 3, 0); // Send failure back
+		if (charsRead < 0) error("ERROR writing to socket");
+		close(establishedConnectionFD); // Close the existing socket which is connected to the client
+		return 1;
+	}
+	return 0;
 }
