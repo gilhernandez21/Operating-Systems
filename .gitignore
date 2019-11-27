@@ -78,3 +78,7 @@ p4gradingscript
 Programs/Program4/test.c
 Programs/Program4/test
 Programs/Program4/Makefile
+Programs/Program4/server.c
+Programs/Program4/client.c
+Programs/Program4/server
+Programs/Program4/client
