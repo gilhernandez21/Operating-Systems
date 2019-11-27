@@ -23,6 +23,7 @@ int getResponse(char buffer[], int socketFD);
 int main(int argc, char *argv[])
 {
 	char* clientVerifier = "OTP_ENC";
+	char* terminationString = "$OTP_TERMINATE";
 
 	int socketFD, portNumber, charsWritten, charsRead;
 	struct sockaddr_in serverAddress;
@@ -61,20 +62,29 @@ int main(int argc, char *argv[])
 		exit(2);
 	}
 
-	// // Send Verifier
-	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-	// strcpy(buffer, "OTHER MESSAGE");
+	// Send plaintext to server
+	FILE* fileInput = fopen(argv[1], "r"); // Open plaintext file
+	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
 
-	// // Send message to server
-	// charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
-	// if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	// if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	char fileBuffer[OTP_BUFFERSIZE];
+    while(fgets(fileBuffer, sizeof(fileBuffer), fileInput))
+    {
+		// Send message to server
+		sendMessage(buffer, fileBuffer, socketFD);
+		// Get return message from server
+		getResponse(buffer, socketFD);
 
-	// // Get return message from server
-	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+        memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
+    }
+	fclose(fileInput);
+	sendMessage(buffer, terminationString, socketFD);
+	getResponse(buffer, socketFD);
+
+	// Send keygen to server
+	fileInput = fopen(argv[2], "r");
+	fclose(fileInput);
+
+	// Get ciphertext and print to stdout
 
 	close(socketFD); // Close the socket
 	return 0;
@@ -142,7 +152,7 @@ int getResponse(char buffer[], int socketFD)
 	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer again for reuse
 	charsRead = recv(socketFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read data from the socket, leaving \0 at end
 	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	printf("CLIENT: I received this from the server: \"%s\"\n", buffer); // DEBUGGING
+	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer); // DEBUGGING
 
 	return 0;
 }
