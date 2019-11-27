@@ -10,14 +10,25 @@
 #define OTP_BUFFERSIZE 256
 #define OTP_MAX_CONNECTIONS 5
 
+struct OneTimePad {
+	char* plaintext;
+	char* key;
+	char* ciphertext;
+};
+
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
 int getFromClient(char buffer[], int establishedConnectionFD);
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
 
+int initOTP(struct OneTimePad* pad);
+int freeOTP(struct OneTimePad* pad);
+int appendString(char** string, char* input);
+
 int main(int argc, char *argv[])
 {
 	char* clientVerifier = "OTP_ENC";
+	char* terminationString = "$OTP_TERMINATE";
 
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
@@ -25,6 +36,11 @@ int main(int argc, char *argv[])
 	struct sockaddr_in serverAddress, clientAddress;
 
 	pid_t backPIDs[OTP_MAX_CONNECTIONS];
+	int index;
+	for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
+	{
+		backPIDs[index] = 1;
+	}
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
@@ -70,15 +86,32 @@ int main(int argc, char *argv[])
 				getFromClient(buffer, establishedConnectionFD);
 				sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
 
-				// Get Plain Text
-				// memset(buffer, '\0', OTP_BUFFERSIZE);
-				// charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
-				// if (charsRead < 0) error("ERROR reading from socket");
-				// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+				// Initialize the OneTimePad files;
+				struct OneTimePad pad;
+				initOTP(&pad);
 
-				// // Send a Success message back to the client
-				// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-				// if (charsRead < 0) error("ERROR writing to socket");
+				// Get Plain Text
+				while(1)
+				{
+					// Get part of the plaintext file
+					getFromClient(buffer, establishedConnectionFD);
+
+					// Send confirmation that message was recieved to client
+					charsRead = send(establishedConnectionFD, "200", 3, 0); // Send success back
+					if (charsRead < 0) error("ERROR writing to socket");
+
+					// If termination string wasn't recieved, save string
+					if (strcmp(buffer, terminationString))
+					{
+						appendString(&pad.plaintext, buffer);
+					}
+					// Otherwise, exit the loop
+					else
+					{
+						break;
+					}
+				}
+				// printf("\n\nComplete Plaintext:\n'%s'\n\n", pad.plaintext);
 
 				// Get Key
 
@@ -86,26 +119,36 @@ int main(int argc, char *argv[])
 
 				// Send the cipher text to client
 
+				freeOTP(&pad);
+
 				close(establishedConnectionFD); // Close the existing socket which is connected to the client
 				exit(0);
 				break;
 			}
 			default:
 			{
+				int savedPID = 0;	// Flag checks to see if background PID was saved
 				// Add Process to Empty PID
 				int index;
 				for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
 				{
 					// Check if Process has Been Completed, if so store background process
 					pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
+					printf("Actual PID: %d, Background PID: %d\n", actualPID, backPIDs[index]);
 					if (actualPID)
 					{
 						backPIDs[index] = spawnPID;
+						printf("Stored PID: %d\n", backPIDs[index]);
+						savedPID = 1;
 						break;
 					}
 				}
-				fprintf(stderr, "ERROR: Processes exceed max connections, retriveing child...\n");
-				waitpid(spawnPID, &childExitMethod, 0);
+				// If process ID couldn't be saved, print error and retrieve child
+				if (!savedPID)
+				{
+					fprintf(stderr, "ERROR: Processes exceed max connections, retriveing child...\n");
+					waitpid(spawnPID, &childExitMethod, 0);
+				}
 				break;
 			}
 		}
@@ -137,9 +180,17 @@ int main(int argc, char *argv[])
 
 		// Get Key File
 
-	} while(1);
+	} while(0);
 
 	close(listenSocketFD); // Close the listening socket
+
+	// // catch all remaining children
+	// int childExitMethod = -5;
+	// for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
+	// {
+	// 	// Check if Process has Been Completed
+	// 	pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, 0);
+	// }
 	return 0; 
 }
 
@@ -171,4 +222,57 @@ int sendVerificationResult(char buffer[], char* clientVerifier, int establishedC
 		return 1;
 	}
 	return 0;
+}
+
+int initOTP(struct OneTimePad* pad)
+{
+	// Initalize values to NULL
+	pad->plaintext = NULL;
+	pad->key = NULL;
+	pad->ciphertext = NULL;
+
+	return 0;
+}
+
+int freeOTP(struct OneTimePad* pad)
+{
+	if (pad->plaintext != NULL)
+	{
+		free(pad->plaintext);
+	}
+	if (pad->key != NULL)
+	{
+	free(pad->key);
+	}
+	if (pad->ciphertext != NULL)
+	{
+		free(pad->ciphertext);
+	}
+}
+
+int appendString(char** string, char* input)
+{
+    // If the string is not empty, combine string and input
+    if (*string != NULL)
+    {
+        // Make a temporary string
+        size_t newLength = strlen(*string) + strlen(input);
+        char* temp = malloc(newLength * sizeof(char));
+        // Combine old string and input into temporary string
+        sprintf(temp, "%s%s", *string, input);
+        // Save new string
+        free(*string);
+        *string = malloc(newLength * sizeof(char));
+        strcpy(*string, temp);
+        // Deallocate Temp
+        free(temp);
+    }
+    // Otherwise, initialize the empty string and set it to the input;
+    else
+    {
+        *string = malloc(strlen(input) * sizeof(char));
+        strcpy(*string, input);
+    }
+
+    return 0;
 }
