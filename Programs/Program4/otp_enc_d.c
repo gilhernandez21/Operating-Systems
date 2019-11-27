@@ -4,9 +4,11 @@
 #include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 
 #define OTP_BUFFERSIZE 256
+#define OTP_MAX_CONNECTIONS 5
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
@@ -21,6 +23,8 @@ int main(int argc, char *argv[])
 	socklen_t sizeOfClientInfo;
 	char buffer[OTP_BUFFERSIZE];
 	struct sockaddr_in serverAddress, clientAddress;
+
+	pid_t backPIDs[OTP_MAX_CONNECTIONS];
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
@@ -38,7 +42,7 @@ int main(int argc, char *argv[])
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
 		error("ERROR on binding");
-	listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
+	listen(listenSocketFD, OTP_MAX_CONNECTIONS); // Flip the socket on - it can now receive up to 5 connections
 
 	do
 	{
@@ -47,10 +51,77 @@ int main(int argc, char *argv[])
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("ERROR on accept");
 
-		// Get Verifification Message from Client
-		getFromClient(buffer, establishedConnectionFD);
-		// Send result code back to the client
-		sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
+		pid_t spawnPID = -5;
+		int childExitMethod = -5;
+
+		spawnPID = fork();
+
+		switch (spawnPID)
+		{
+			case -1:
+			{
+				error("fork() failed\n");
+				exit(1);
+				break;
+			}
+			case 0:
+			{
+				// Get verifification message from client and send result code back
+				getFromClient(buffer, establishedConnectionFD);
+				sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
+
+				// Get Plain Text
+				// memset(buffer, '\0', OTP_BUFFERSIZE);
+				// charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
+				// if (charsRead < 0) error("ERROR reading from socket");
+				// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+				// // Send a Success message back to the client
+				// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+				// if (charsRead < 0) error("ERROR writing to socket");
+
+				// Get Key
+
+				// Encode Text
+
+				// Send the cipher text to client
+
+				close(establishedConnectionFD); // Close the existing socket which is connected to the client
+				exit(0);
+				break;
+			}
+			default:
+			{
+				// Add Process to Empty PID
+				int index;
+				for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
+				{
+					// Check if Process has Been Completed, if so store background process
+					pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
+					if (actualPID)
+					{
+						backPIDs[index] = spawnPID;
+						break;
+					}
+				}
+				fprintf(stderr, "ERROR: Processes exceed max connections, retriveing child...\n");
+				waitpid(spawnPID, &childExitMethod, 0);
+				break;
+			}
+		}
+
+		// Wait Children
+		int index;
+		for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
+		{
+			// Check if Process has Been Completed
+			pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
+		}
+
+		// // Get Verifification Message from Client
+		// getFromClient(buffer, establishedConnectionFD);
+		// // Send result code back to the client
+		// sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
 
 		// Get Plaintext
 
@@ -66,7 +137,6 @@ int main(int argc, char *argv[])
 
 		// Get Key File
 
-		close(establishedConnectionFD); // Close the existing socket which is connected to the client
 	} while(1);
 
 	close(listenSocketFD); // Close the listening socket
