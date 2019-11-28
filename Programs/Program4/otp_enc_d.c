@@ -58,6 +58,25 @@ char getIntChar(int value)
     return -1;
 }
     
+int OTP_encode(struct OneTimePad* encoder)
+{
+    int plaintextLength = strlen(encoder->plaintext), keyLength = strlen(encoder->key);
+    if (plaintextLength > keyLength) {error("ERROR plaintext length greater than key length\n");}
+    char plaintextCharacter, keyCharacter;
+    encoder->ciphertext = malloc(plaintextLength * sizeof(char));
+
+    int index;
+    for(index = 0; index < plaintextLength - 1; index++)
+    {
+        int messageKey = getCharVal(encoder->plaintext[index]) + getCharVal(encoder->key[index]);
+        char cipherChar = getIntChar(messageKey % OTP_NUMCHARS);
+        (encoder->ciphertext)[index] = cipherChar;
+    }
+    (encoder->ciphertext)[index] = '\n';
+
+    return 0;
+}
+
 int OTP_decode(struct OneTimePad* decoder)
 {
     int ciphertextLength = strlen(decoder->ciphertext), keyLength = strlen(decoder->key);
@@ -73,25 +92,6 @@ int OTP_decode(struct OneTimePad* decoder)
         decoder->plaintext[index] = plainChar;
     }
     decoder->plaintext[index] = '\n';
-
-    return 0;
-}
-
-int OTP_decode(char* ciphertext, char* key, char** plaintext)
-{
-    int ciphertextLength = strlen(ciphertext), keyLength = strlen(key);
-    if (ciphertextLength > keyLength) {error("ERROR ciphertext length greater than key length\n");}
-    char ciphertextCharacter, keyCharacter;
-    *plaintext = malloc(ciphertextLength * sizeof(char));
-
-    int index;
-    for(index = 0; index < ciphertextLength - 1; index++)
-    {
-        int messageKey = getCharVal(ciphertext[index]) - getCharVal(key[index]);
-        char plainChar = getIntChar((messageKey + OTP_NUMCHARS) % OTP_NUMCHARS);
-        (*plaintext)[index] = plainChar;
-    }
-    (*plaintext)[index] = '\n';
 
     return 0;
 }
