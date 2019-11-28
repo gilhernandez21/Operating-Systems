@@ -9,7 +9,7 @@
 
 #define OTP_BUFFERSIZE 256
 #define OTP_MAX_CONNECTIONS 5
-#define OTP_NUMCHARS 26
+#define OTP_NUMCHARS 27
 
 struct OneTimePad {
 	char* plaintext;
@@ -48,7 +48,7 @@ int getCharVal(char character)
 
 char getIntChar(int value)
 {
-    if (value == OTP_NUMCHARS) {return ' ';}
+    if (value == OTP_NUMCHARS - 1) {return ' ';}
     else if (value < OTP_NUMCHARS) {return (char) value + 'A';}
     else
     {
@@ -168,7 +168,9 @@ int main(int argc, char *argv[])
 				getClientFile(buffer, terminationString, &pad.key, establishedConnectionFD);
 
 				// Encode Text
-				
+				OTP_encode(&pad);
+				printf("Plaintext: '%s'\n", pad.plaintext);
+				printf("Cipher: '%s'\n", pad.ciphertext);
 
 				// Send the cipher text to client
 				// sendMessage(pad.plaintext, establishedConnectionFD);
@@ -339,6 +341,7 @@ int getClientFile(char buffer[], char* termString, char** fileString, int establ
 		// Otherwise, exit the loop
 		else
 		{
+			appendString(fileString, "\0");
 			break;
 		}
 	}
