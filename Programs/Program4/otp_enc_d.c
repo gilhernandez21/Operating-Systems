@@ -9,6 +9,7 @@
 
 #define OTP_BUFFERSIZE 256
 #define OTP_MAX_CONNECTIONS 5
+#define OTP_NUMCHARS 26
 
 struct OneTimePad {
 	char* plaintext;
@@ -20,11 +21,80 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 
 int getFromClient(char buffer[], int establishedConnectionFD);
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
+int sendMessage(char* message, int socketFD);
 
 int initOTP(struct OneTimePad* pad);
 int freeOTP(struct OneTimePad* pad);
 int appendString(char** string, char* input);
 int getClientFile(char buffer[], char* termString, char** fileString, int establishedConnectionFD);
+
+int getCharVal(char character)
+{
+    if (character >= 'A' && character <= 'Z')
+    {
+        return character - 'A';
+    }
+    else if (character == ' ')
+    {
+        return 26;
+    }
+    else
+    {
+        fprintf(stderr, "ERROR invalid character '%c' detected\n", character);
+        exit(1);
+    }
+    return -1;
+}
+
+char getIntChar(int value)
+{
+    if (value == OTP_NUMCHARS) {return ' ';}
+    else if (value < OTP_NUMCHARS) {return (char) value + 'A';}
+    else
+    {
+        fprintf(stderr, "ERROR invalid value '%d' detected\n", value);
+        exit(1);
+    }
+    return -1;
+}
+    
+int OTP_encode(char* plaintext, char* key, char** ciphertext)
+{
+    int plaintextLength = strlen(plaintext), keyLength = strlen(key);
+    if (plaintextLength > keyLength) {error("ERROR plaintext length greater than key length\n");}
+    char plaintextCharacter, keyCharacter;
+    *ciphertext = malloc(plaintextLength * sizeof(char));
+
+    int index;
+    for(index = 0; index < plaintextLength - 1; index++)
+    {
+        int messageKey = getCharVal(plaintext[index]) + getCharVal(key[index]);
+        char cipherChar = getIntChar(messageKey % OTP_NUMCHARS);
+        (*ciphertext)[index] = cipherChar;
+    }
+    (*ciphertext)[index] = '\n';
+
+    return 0;
+}
+
+int OTP_decode(char* ciphertext, char* key, char** plaintext)
+{
+    int ciphertextLength = strlen(ciphertext), keyLength = strlen(key);
+    if (ciphertextLength > keyLength) {error("ERROR ciphertext length greater than key length\n");}
+    char ciphertextCharacter, keyCharacter;
+    *plaintext = malloc(ciphertextLength * sizeof(char));
+
+    int index;
+    for(index = 0; index < ciphertextLength - 1; index++)
+    {
+        int messageKey = getCharVal(ciphertext[index]) - getCharVal(key[index]);
+        char plainChar = getIntChar((messageKey + OTP_NUMCHARS) % OTP_NUMCHARS);
+        (*plaintext)[index] = plainChar;
+    }
+    (*plaintext)[index] = '\n';
+
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -95,14 +165,16 @@ int main(int argc, char *argv[])
 				getClientFile(buffer, terminationString, &pad.plaintext, establishedConnectionFD);
 
 				// Get Key
-				// getClientFile(buffer, terminationString, &pad.key, establishedConnectionFD);
+				getClientFile(buffer, terminationString, &pad.key, establishedConnectionFD);
 
 				// Encode Text
+				
 
 				// Send the cipher text to client
+				// sendMessage(pad.plaintext, establishedConnectionFD);
 
-				printf("Plain Text:\n%s\n", pad.plaintext);
-				printf("Key:\n%s\n", pad.key);
+				// printf("Plain Text:\n%s\n", pad.plaintext);
+				// printf("Key:\n%s\n", pad.key);
 
 				freeOTP(&pad);
 
@@ -171,6 +243,7 @@ int getFromClient(char buffer[], int establishedConnectionFD)
 
 	return 0;
 }
+
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD)
 {
 	int charsRead;
@@ -222,7 +295,7 @@ int appendString(char** string, char* input)
     if (*string != NULL)
     {
         // Make a temporary string
-        size_t newLength = strlen(*string) + strlen(input);
+        size_t newLength = strlen(*string) + strlen(input) + 1;
         char* temp = malloc(newLength * sizeof(char));
         // Combine old string and input into temporary string
         sprintf(temp, "%s%s", *string, input);
@@ -269,6 +342,18 @@ int getClientFile(char buffer[], char* termString, char** fileString, int establ
 			break;
 		}
 	}
+
+	return 0;
+}
+
+int sendMessage(char* message, int connectionFD)
+{
+	int charsWritten;
+
+	// printf("SERVER: I sent this to the client \"%s\" %ld\n", message, strlen(message));
+	charsWritten = send(connectionFD, message, strlen(message), 0); // Write to the server
+	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
+	if (charsWritten < strlen(message)) printf("SERVER: WARNING: Not all data written to socket!\n");
 
 	return 0;
 }
