@@ -17,7 +17,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 int checkFile(char* fileName);
 void validateFiles(char* plaintext, char* key);
 
-int sendMessage(char buffer[], char* message, int socketFD);
+int sendMessage(char* message, int socketFD);
 int getResponse(char buffer[], int socketFD);
 int checkSent(int socketFD)
 {
@@ -45,7 +45,7 @@ int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
 		count++;
 		
 		// Send message to server
-		sendMessage(buffer, fileBuffer, socketFD);
+		sendMessage(fileBuffer, socketFD);
 		// Get return message from server
 		getResponse(buffer, socketFD);
 
@@ -53,7 +53,7 @@ int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
 	}
 	printf("Number of sends needed: %d\n", count);
 	// Send Termination Signal
-	sendMessage(buffer, termString, socketFD);
+	sendMessage(termString, socketFD);
 	getResponse(buffer, socketFD);
 	// Close File
 	fclose(fileInput);
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 		error("CLIENT: ERROR connecting");
 
 	// Send verifier to server and get response
-	sendMessage(buffer, clientVerifier, socketFD);
+	sendMessage(clientVerifier, socketFD);
 	getResponse(buffer, socketFD);
 	// If server sends unsuccessful response, print error and exit.
 	if (atoi(buffer) != 200)
@@ -155,15 +155,13 @@ void validateFiles(char* plaintext, char* key)
     }
 }
 
-int sendMessage(char buffer[], char* message, int socketFD)
+int sendMessage(char* message, int socketFD)
 {
 	int charsWritten;
 
-	memset(buffer, '\0', OTP_BUFFERSIZE); 	// Clear out the buffer array
-	strcpy(buffer, message);			// Set Message
-	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
+	charsWritten = send(socketFD, message, strlen(message), 0); // Write to the server
 	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	if (charsWritten < strlen(message)) printf("CLIENT: WARNING: Not all data written to socket!\n");
 	checkSent(socketFD);
 	
 	return 0;
