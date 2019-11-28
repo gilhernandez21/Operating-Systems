@@ -19,45 +19,8 @@ void validateFiles(char* plaintext, char* key);
 
 int sendMessage(char* message, int socketFD);
 int getResponse(char buffer[], int socketFD);
-int checkSent(int socketFD)
-{
-	int checkSend = 5;
-	do
-	{
-		ioctl(socketFD, TIOCOUTQ, &checkSend);
-	} while (checkSend > 0);
-	if (checkSend < 0)
-	{
-		error("ioctl error");
-	}
-}
-
-int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
-{
-	FILE* fileInput = fopen(fileName, "r"); // Open plaintext file
-	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
-
-	int count = 0;
-
-	char fileBuffer[OTP_BUFFERSIZE];
-	while(fgets(fileBuffer, OTP_BUFFERSIZE, fileInput))
-	{
-		count++;
-		
-		// Send message to server
-		sendMessage(fileBuffer, socketFD);
-		// Get return message from server
-		getResponse(buffer, socketFD);
-
-		memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
-	}
-	printf("Number of sends needed: %d\n", count);
-	// Send Termination Signal
-	sendMessage(termString, socketFD);
-	getResponse(buffer, socketFD);
-	// Close File
-	fclose(fileInput);
-}
+int checkSent(int socketFD);
+int sendFile(char* fileName, char buffer[], char* termString, int socketFD);
 
 int main(int argc, char *argv[])
 {
@@ -105,9 +68,11 @@ int main(int argc, char *argv[])
 	sendFile(argv[1], buffer, terminationString, socketFD);
 
 	// Send keygen to server
-	// sendFile(argv[2], buffer, terminationString, socketFD);
+	sendFile(argv[2], buffer, terminationString, socketFD);
 
 	// Get ciphertext and print to stdout
+	// getResponse(buffer, socketFD);
+	// printf("%s", buffer);
 
 	close(socketFD); // Close the socket
 	return 0;
@@ -159,6 +124,7 @@ int sendMessage(char* message, int socketFD)
 {
 	int charsWritten;
 
+	// printf("CLIENT: I sent this to the client \"%s\" %ld\n", message, strlen(message));
 	charsWritten = send(socketFD, message, strlen(message), 0); // Write to the server
 	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
 	if (charsWritten < strlen(message)) printf("CLIENT: WARNING: Not all data written to socket!\n");
@@ -177,4 +143,44 @@ int getResponse(char buffer[], int socketFD)
 	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer); // DEBUGGING
 
 	return 0;
+}
+
+int checkSent(int socketFD)
+{
+	int checkSend = 5;
+	do
+	{
+		ioctl(socketFD, TIOCOUTQ, &checkSend);
+	} while (checkSend > 0);
+	if (checkSend < 0)
+	{
+		error("ioctl error");
+	}
+}
+
+int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
+{
+	FILE* fileInput = fopen(fileName, "r"); // Open plaintext file
+	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
+
+	int count = 0;
+
+	char fileBuffer[OTP_BUFFERSIZE];
+	while(fgets(fileBuffer, OTP_BUFFERSIZE, fileInput))
+	{
+		count++;
+		
+		// Send message to server
+		sendMessage(fileBuffer, socketFD);
+		// Get return message from server
+		getResponse(buffer, socketFD);
+
+		memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
+	}
+	// printf("Number of sends needed: %d\n", count);
+	// Send Termination Signal
+	sendMessage(termString, socketFD);
+	getResponse(buffer, socketFD);
+	// Close File
+	fclose(fileInput);
 }
