@@ -24,6 +24,7 @@ int sendVerificationResult(char buffer[], char* clientVerifier, int establishedC
 int initOTP(struct OneTimePad* pad);
 int freeOTP(struct OneTimePad* pad);
 int appendString(char** string, char* input);
+int getClientFile(char buffer[], char* termString, char** fileString, int establishedConnectionFD);
 
 int main(int argc, char *argv[])
 {
@@ -91,33 +92,17 @@ int main(int argc, char *argv[])
 				initOTP(&pad);
 
 				// Get Plain Text
-				while(1)
-				{
-					// Get part of the plaintext file
-					getFromClient(buffer, establishedConnectionFD);
-
-					// Send confirmation that message was recieved to client
-					charsRead = send(establishedConnectionFD, "200", 3, 0); // Send success back
-					if (charsRead < 0) error("ERROR writing to socket");
-
-					// If termination string wasn't recieved, save string
-					if (strcmp(buffer, terminationString))
-					{
-						appendString(&pad.plaintext, buffer);
-					}
-					// Otherwise, exit the loop
-					else
-					{
-						break;
-					}
-				}
-				// printf("\n\nComplete Plaintext:\n'%s'\n\n", pad.plaintext);
+				getClientFile(buffer, terminationString, &pad.plaintext, establishedConnectionFD);
 
 				// Get Key
+				// getClientFile(buffer, terminationString, &pad.key, establishedConnectionFD);
 
 				// Encode Text
 
 				// Send the cipher text to client
+
+				printf("Plain Text:\n%s\n", pad.plaintext);
+				printf("Key:\n%s\n", pad.key);
 
 				freeOTP(&pad);
 
@@ -134,11 +119,11 @@ int main(int argc, char *argv[])
 				{
 					// Check if Process has Been Completed, if so store background process
 					pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
-					printf("Actual PID: %d, Background PID: %d\n", actualPID, backPIDs[index]);
+					// printf("Actual PID: %d, Background PID: %d\n", actualPID, backPIDs[index]); // DEBUGGING
 					if (actualPID)
 					{
 						backPIDs[index] = spawnPID;
-						printf("Stored PID: %d\n", backPIDs[index]);
+						// printf("Stored PID: %d\n", backPIDs[index]); DEBUGGING
 						savedPID = 1;
 						break;
 					}
@@ -161,36 +146,17 @@ int main(int argc, char *argv[])
 			pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
 		}
 
-		// // Get Verifification Message from Client
-		// getFromClient(buffer, establishedConnectionFD);
-		// // Send result code back to the client
-		// sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
-
-		// Get Plaintext
-
-		// // Get the message from the client and display it
-		// memset(buffer, '\0', OTP_BUFFERSIZE);
-		// charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
-		// if (charsRead < 0) error("ERROR reading from socket");
-		// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
-
-		// // Send a Success message back to the client
-		// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-		// if (charsRead < 0) error("ERROR writing to socket");
-
-		// Get Key File
-
-	} while(0);
+	} while(1);
 
 	close(listenSocketFD); // Close the listening socket
 
-	// // catch all remaining children
-	// int childExitMethod = -5;
-	// for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
-	// {
-	// 	// Check if Process has Been Completed
-	// 	pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, 0);
-	// }
+	// catch all remaining children
+	int childExitMethod = -5;
+	for (index = 0; index < OTP_MAX_CONNECTIONS; index++)
+	{
+		// Check if Process has Been Completed
+		pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, 0);
+	}
 	return 0; 
 }
 
@@ -201,7 +167,7 @@ int getFromClient(char buffer[], int establishedConnectionFD)
 	memset(buffer, '\0', OTP_BUFFERSIZE);
 	charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
 	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received this from the client: \"%s\"\n", buffer); // DEBUGGING
+	// printf("SERVER: I received this from the client: \"%s\"\n", buffer); // DEBUGGING
 
 	return 0;
 }
@@ -275,4 +241,34 @@ int appendString(char** string, char* input)
     }
 
     return 0;
+}
+
+int getClientFile(char buffer[], char* termString, char** fileString, int establishedConnectionFD)
+{
+	int charsRead;
+
+	// Continuously receieve from client, saving to fileString until termination
+	// string is recieved from the client.
+	while(1)
+	{
+		// Get part of the file
+		getFromClient(buffer, establishedConnectionFD);
+
+		// Send confirmation that message was recieved to client
+		charsRead = send(establishedConnectionFD, "200", 3, 0); // Send success back
+		if (charsRead < 0) error("ERROR writing to socket");
+
+		// If termination string wasn't recieved, save string
+		if (strcmp(buffer, termString))
+		{
+			appendString(fileString, buffer);
+		}
+		// Otherwise, exit the loop
+		else
+		{
+			break;
+		}
+	}
+
+	return 0;
 }

@@ -19,6 +19,45 @@ void validateFiles(char* plaintext, char* key);
 
 int sendMessage(char buffer[], char* message, int socketFD);
 int getResponse(char buffer[], int socketFD);
+int checkSent(int socketFD)
+{
+	int checkSend = 5;
+	do
+	{
+		ioctl(socketFD, TIOCOUTQ, &checkSend);
+	} while (checkSend > 0);
+	if (checkSend < 0)
+	{
+		error("ioctl error");
+	}
+}
+
+int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
+{
+	FILE* fileInput = fopen(fileName, "r"); // Open plaintext file
+	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
+
+	int count = 0;
+
+	char fileBuffer[OTP_BUFFERSIZE];
+	while(fgets(fileBuffer, OTP_BUFFERSIZE, fileInput))
+	{
+		count++;
+		
+		// Send message to server
+		sendMessage(buffer, fileBuffer, socketFD);
+		// Get return message from server
+		getResponse(buffer, socketFD);
+
+		memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
+	}
+	printf("Number of sends needed: %d\n", count);
+	// Send Termination Signal
+	sendMessage(buffer, termString, socketFD);
+	getResponse(buffer, socketFD);
+	// Close File
+	fclose(fileInput);
+}
 
 int main(int argc, char *argv[])
 {
@@ -63,26 +102,10 @@ int main(int argc, char *argv[])
 	}
 
 	// Send plaintext to server
-	FILE* fileInput = fopen(argv[1], "r"); // Open plaintext file
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-
-	char fileBuffer[OTP_BUFFERSIZE];
-    while(fgets(fileBuffer, sizeof(fileBuffer), fileInput))
-    {
-		// Send message to server
-		sendMessage(buffer, fileBuffer, socketFD);
-		// Get return message from server
-		getResponse(buffer, socketFD);
-
-        memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-    }
-	fclose(fileInput);
-	sendMessage(buffer, terminationString, socketFD);
-	getResponse(buffer, socketFD);
+	sendFile(argv[1], buffer, terminationString, socketFD);
 
 	// Send keygen to server
-	fileInput = fopen(argv[2], "r");
-	fclose(fileInput);
+	// sendFile(argv[2], buffer, terminationString, socketFD);
 
 	// Get ciphertext and print to stdout
 
@@ -137,10 +160,11 @@ int sendMessage(char buffer[], char* message, int socketFD)
 	int charsWritten;
 
 	memset(buffer, '\0', OTP_BUFFERSIZE); 	// Clear out the buffer array
-	strcpy(buffer, message);			// Set verifier
+	strcpy(buffer, message);			// Set Message
 	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
 	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
 	if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	checkSent(socketFD);
 	
 	return 0;
 }
