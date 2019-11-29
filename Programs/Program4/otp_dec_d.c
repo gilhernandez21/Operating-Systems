@@ -9,45 +9,14 @@
 
 #include "otp_helpers.h"
 
+// Server Functions
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
 int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD);
-
-int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
-{
-    int bufferIndex = 0;
-	char* source = "SERVER";
-
-    // Loop Through the String, building a packet to send
-    int index;
-    for (index = 0; index < strlen(output); index++)
-    {
-        // If packet reaches 
-        if (bufferIndex == OTP_BUFFERSIZE)
-        {
-            bufferIndex = 0;
-            // printf("Packet: '%s'\n", buffer);
-			sendMessage(source, buffer, fileDescriptor);
-			getResponse(source, buffer, fileDescriptor);
-            memset(buffer, '\0', OTP_BUFFERSIZE);
-        }
-        buffer[bufferIndex] = output[index];
-        bufferIndex++;
-    }
-    // Send the remaining buffer
-    // printf("Packet: '%s'\n", buffer);
-	sendMessage(source, buffer, fileDescriptor);
-	getResponse(source, buffer, fileDescriptor);
-    // Send termination character
-    // printf("%s", terminationString);
-	sendMessage(source, terminationString, fileDescriptor);
-	getResponse(source, buffer, fileDescriptor);
-
-    return 0;
-}
+int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor);
 
 int main(int argc, char *argv[])
 {
-	char* clientVerifier = "OTP_ENC";
+	char* clientVerifier = "OTP_DEC";
 	char* terminationString = "$OTP_TERMINATE";
 	char* source = "SERVER";
 
@@ -91,7 +60,7 @@ int main(int argc, char *argv[])
 		pid_t spawnPID = -5;
 		int childExitMethod = -5;
 
-		// Create a fork to get the files, encode the message, the send the ciphertext
+		// Create a fork to get the files, encode the message, the send the plaintext
 		spawnPID = fork();
 
 		switch (spawnPID)
@@ -103,7 +72,7 @@ int main(int argc, char *argv[])
 				exit(1);
 				break;
 			}
-			// Get the files, encode the message, send the ciphertext
+			// Get the files, encode the message, send the plaintext
 			case 0:
 			{
 				// Get verifification message from client and send result code back
@@ -115,7 +84,7 @@ int main(int argc, char *argv[])
 				struct OneTimePad pad;
 				initOTP(&pad);
 
-				// Get Cipher Text
+				// Get cipher Text
 				getClientFile(source, buffer, terminationString, &pad.ciphertext, establishedConnectionFD);
 
 				// Get Key
@@ -124,7 +93,7 @@ int main(int argc, char *argv[])
 				// Encode Text
 				OTP_decode(&pad);
 
-				// Send the cipher text to client
+				// Send the plain text to client
 				sendString(pad.plaintext, buffer, terminationString, establishedConnectionFD);
 				
 				freeOTP(&pad);					// Clear the One Time Pad
@@ -231,4 +200,38 @@ int getClientFile(char* source, char buffer[], char* termString, char** fileStri
 	}
 
 	return 0;
+}
+
+int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
+{
+    int bufferIndex = 0;
+	char* source = "SERVER";
+
+    // Loop Through the String, building a packet to send
+    int index;
+    for (index = 0; index < strlen(output); index++)
+    {
+        // If packet reaches 
+        if (bufferIndex == OTP_BUFFERSIZE - 1)
+        {
+			// Store Termination character
+			buffer[bufferIndex + 1] = '\0';
+			// Reset Iterator
+            bufferIndex = 0;
+			// Send packet and receive response.
+			sendMessage(source, buffer, fileDescriptor);
+			getResponse(source, buffer, fileDescriptor);
+            memset(buffer, '\0', OTP_BUFFERSIZE);
+        }
+        buffer[bufferIndex] = output[index];
+        bufferIndex++;
+    }
+    // Send the remaining buffer
+	sendMessage(source, buffer, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
+    // Send termination character
+	sendMessage(source, terminationString, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
+
+    return 0;
 }

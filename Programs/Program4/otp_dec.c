@@ -13,7 +13,8 @@
 
 // File Validation
 int checkFile(char* fileName);
-void validateFiles(char* plaintext, char* key);
+void validateFiles(char* ciphertext, char* key);
+// Client Function
 int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD);
 
 int main(int argc, char *argv[])
@@ -71,10 +72,12 @@ int main(int argc, char *argv[])
 		getResponse(source, buffer, socketFD);
 		sendMessage(source, "200", socketFD);
 
+		// If not termination string, print the buffer
 		if (strcmp(buffer, terminationString))
 		{
 			printf("%s", buffer);
 		}
+		// Otherwise, exit the loop
 		else
 		{
 			break;
@@ -113,16 +116,16 @@ int checkFile(char* fileName)
     return count;
 }
 
-void validateFiles(char* plaintext, char* key)
+void validateFiles(char* ciphertext, char* key)
 {
     // Check if files are valid and record number of characters
-    int plaintextCount = checkFile(plaintext);
+    int ciphertextCount = checkFile(ciphertext);
     int keyCount = checkFile(key);
 
-    // If the key file is shorter than the plaintext, terminate and send error
-    if (keyCount < plaintextCount)
+    // If the key file is shorter than the ciphertext, terminate and send error
+    if (keyCount < ciphertextCount)
     {
-        fprintf(stderr, "ERROR key file '%s' shorter than plaintext '%s'\n", key, plaintext);
+        fprintf(stderr, "ERROR key file '%s' shorter than ciphertext '%s'\n", key, ciphertext);
         exit(1);
     }
 }
@@ -130,7 +133,7 @@ void validateFiles(char* plaintext, char* key)
 int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD)
 {
 
-	FILE* fileInput = fopen(fileName, "r"); // Open plaintext file
+	FILE* fileInput = fopen(fileName, "r"); // Open ciphertext file
 	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
 
 	int count = 0;
