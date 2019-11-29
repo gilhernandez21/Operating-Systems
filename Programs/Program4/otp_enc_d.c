@@ -111,11 +111,9 @@ int main(int argc, char *argv[])
 				{
 					// Check if Process has Been Completed, if so store background process
 					pid_t actualPID = waitpid(backPIDs[index], &childExitMethod, WNOHANG);
-					// printf("Actual PID: %d, Background PID: %d\n", actualPID, backPIDs[index]); // DEBUGGING
 					if (actualPID)
 					{
 						backPIDs[index] = spawnPID;
-						// printf("Stored PID: %d\n", backPIDs[index]); DEBUGGING
 						savedPID = 1;
 						break;
 					}
@@ -227,11 +225,9 @@ int sendString(char* output, char buffer[], char* terminationString, int fileDes
         bufferIndex++;
     }
     // Send the remaining buffer
-    // printf("Packet: '%s'\n", buffer);
 	sendMessage(source, buffer, fileDescriptor);
 	getResponse(source, buffer, fileDescriptor);
     // Send termination character
-    // printf("%s", terminationString);
 	sendMessage(source, terminationString, fileDescriptor);
 	getResponse(source, buffer, fileDescriptor);
 
