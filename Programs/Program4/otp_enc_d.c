@@ -9,44 +9,10 @@
 
 #include "otp_helpers.h"
 
+// Server Functions
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
 int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD);
-
-int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
-{
-    int bufferIndex = 0;
-	char* source = "SERVER";
-
-    // Loop Through the String, building a packet to send
-    int index;
-    for (index = 0; index < strlen(output); index++)
-    {
-        // If packet reaches 
-        if (bufferIndex == OTP_BUFFERSIZE - 1)
-        {
-			// Store Termination character
-			buffer[bufferIndex + 1] = '\0';
-			// Reset Iterator
-            bufferIndex = 0;
-			// Send packet and receive response.
-			sendMessage(source, buffer, fileDescriptor);
-			getResponse(source, buffer, fileDescriptor);
-            memset(buffer, '\0', OTP_BUFFERSIZE);
-        }
-        buffer[bufferIndex] = output[index];
-        bufferIndex++;
-    }
-    // Send the remaining buffer
-    // printf("Packet: '%s'\n", buffer);
-	sendMessage(source, buffer, fileDescriptor);
-	getResponse(source, buffer, fileDescriptor);
-    // Send termination character
-    // printf("%s", terminationString);
-	sendMessage(source, terminationString, fileDescriptor);
-	getResponse(source, buffer, fileDescriptor);
-
-    return 0;
-}
+int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor);
 
 int main(int argc, char *argv[])
 {
@@ -234,4 +200,40 @@ int getClientFile(char* source, char buffer[], char* termString, char** fileStri
 	}
 
 	return 0;
+}
+
+int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
+{
+    int bufferIndex = 0;
+	char* source = "SERVER";
+
+    // Loop Through the String, building a packet to send
+    int index;
+    for (index = 0; index < strlen(output); index++)
+    {
+        // If packet reaches 
+        if (bufferIndex == OTP_BUFFERSIZE - 1)
+        {
+			// Store Termination character
+			buffer[bufferIndex + 1] = '\0';
+			// Reset Iterator
+            bufferIndex = 0;
+			// Send packet and receive response.
+			sendMessage(source, buffer, fileDescriptor);
+			getResponse(source, buffer, fileDescriptor);
+            memset(buffer, '\0', OTP_BUFFERSIZE);
+        }
+        buffer[bufferIndex] = output[index];
+        bufferIndex++;
+    }
+    // Send the remaining buffer
+    // printf("Packet: '%s'\n", buffer);
+	sendMessage(source, buffer, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
+    // Send termination character
+    // printf("%s", terminationString);
+	sendMessage(source, terminationString, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
+
+    return 0;
 }

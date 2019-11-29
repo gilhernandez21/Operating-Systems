@@ -14,6 +14,7 @@
 // File Validation
 int checkFile(char* fileName);
 void validateFiles(char* plaintext, char* key);
+// Client Function
 int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD);
 
 int main(int argc, char *argv[])
@@ -66,24 +67,22 @@ int main(int argc, char *argv[])
 	sendFile(source, argv[2], buffer, terminationString, socketFD);
 
 	// Get ciphertext and print to stdout
-	// char* ciphertext = NULL;
 	while(1)
 	{
 		getResponse(source, buffer, socketFD);
 		sendMessage(source, "200", socketFD);
 
+		// If not termination string, print the buffer
 		if (strcmp(buffer, terminationString))
 		{
-			// appendString(&ciphertext, buffer);
 			printf("%s", buffer);
 		}
+		// Otherwise, exit the loop
 		else
 		{
-			// appendString(&ciphertext, "\0");
 			break;
 		}
 	}
-	// printf("%s", ciphertext);
 
 	close(socketFD); // Close the socket
 	return 0;
