@@ -166,7 +166,7 @@ int sendVerificationResult(char buffer[], char* clientVerifier, int establishedC
 		charsRead = send(establishedConnectionFD, "403", 3, 0); // Send failure back
 		if (charsRead < 0) error("ERROR writing to socket");
 		close(establishedConnectionFD); // Close the existing socket which is connected to the client
-		return 1;
+		exit(1);
 	}
 	return 0;
 }

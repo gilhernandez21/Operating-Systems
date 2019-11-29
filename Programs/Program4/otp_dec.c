@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	// If server sends unsuccessful response, print error and exit.
 	if (atoi(buffer) != 200)
 	{
-		fprintf(stderr, "ERROR: Cannot connect to server on port: %d\n", portNumber);
+		fprintf(stderr, "Error: could not contact opt_dec_d on port %d\n", portNumber);
 		exit(2);
 	}
 
