@@ -5,13 +5,23 @@ function keygen_compile(){
 }
 
 function otp_enc_d_compile(){
-    gcc otp_enc_d.c -o otp_enc_d
+    gcc otp_helpers.h otp_helpers.c otp_enc_d.c -o otp_enc_d
 }
 
 function otp_enc_compile(){
-    gcc otp_enc.c -o otp_enc
+    gcc otp_helpers.h otp_helpers.c otp_enc.c -o otp_enc
+}
+
+function otp_dec_d_compile(){
+    gcc otp_helpers.h otp_helpers.c otp_dec_d.c -o otp_dec_d
+}
+
+function otp_dec_compile(){
+    gcc otp_helpers.h otp_helpers.c otp_dec.c -o otp_dec
 }
 
 keygen_compile
 otp_enc_d_compile
 otp_enc_compile
+otp_dec_d_compile
+otp_dec_compile
