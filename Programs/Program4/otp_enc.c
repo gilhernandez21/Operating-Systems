@@ -8,24 +8,19 @@
 #include <netdb.h>
 #include <sys/ioctl.h>
 
+#include "otp_helpers.h"
 #define h_addr h_addr_list[0]
-#define OTP_BUFFERSIZE 256
-
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
 // File Validation
 int checkFile(char* fileName);
 void validateFiles(char* plaintext, char* key);
-
-int sendMessage(char* message, int socketFD);
-int getResponse(char buffer[], int socketFD);
-int checkSent(int socketFD);
-int sendFile(char* fileName, char buffer[], char* termString, int socketFD);
+int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD);
 
 int main(int argc, char *argv[])
 {
 	char* clientVerifier = "OTP_ENC";
 	char* terminationString = "$OTP_TERMINATE";
+	char* source = "CLIENT";
 
 	int socketFD, portNumber, charsWritten, charsRead;
 	struct sockaddr_in serverAddress;
@@ -55,8 +50,8 @@ int main(int argc, char *argv[])
 		error("CLIENT: ERROR connecting");
 
 	// Send verifier to server and get response
-	sendMessage(clientVerifier, socketFD);
-	getResponse(buffer, socketFD);
+	sendMessage(source, clientVerifier, socketFD);
+	getResponse(source, buffer, socketFD);
 	// If server sends unsuccessful response, print error and exit.
 	if (atoi(buffer) != 200)
 	{
@@ -65,14 +60,30 @@ int main(int argc, char *argv[])
 	}
 
 	// Send plaintext to server
-	sendFile(argv[1], buffer, terminationString, socketFD);
+	sendFile(source, argv[1], buffer, terminationString, socketFD);
 
 	// Send keygen to server
-	sendFile(argv[2], buffer, terminationString, socketFD);
+	sendFile(source, argv[2], buffer, terminationString, socketFD);
 
 	// Get ciphertext and print to stdout
-	// getResponse(buffer, socketFD);
-	// printf("%s", buffer);
+	// char* ciphertext = NULL;
+	while(1)
+	{
+		getResponse(source, buffer, socketFD);
+		sendMessage(source, "200", socketFD);
+
+		if (strcmp(buffer, terminationString))
+		{
+			// appendString(&ciphertext, buffer);
+			printf("%s", buffer);
+		}
+		else
+		{
+			// appendString(&ciphertext, "\0");
+			break;
+		}
+	}
+	// printf("%s", ciphertext);
 
 	close(socketFD); // Close the socket
 	return 0;
@@ -120,46 +131,9 @@ void validateFiles(char* plaintext, char* key)
     }
 }
 
-int sendMessage(char* message, int socketFD)
+int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD)
 {
-	int charsWritten;
 
-	// printf("CLIENT: I sent this to the client \"%s\" %ld\n", message, strlen(message));
-	charsWritten = send(socketFD, message, strlen(message), 0); // Write to the server
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	if (charsWritten < strlen(message)) printf("CLIENT: WARNING: Not all data written to socket!\n");
-	checkSent(socketFD);
-	
-	return 0;
-}
-
-int getResponse(char buffer[], int socketFD)
-{
-	int charsRead;
-
-	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer again for reuse
-	charsRead = recv(socketFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read data from the socket, leaving \0 at end
-	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer); // DEBUGGING
-
-	return 0;
-}
-
-int checkSent(int socketFD)
-{
-	int checkSend = 5;
-	do
-	{
-		ioctl(socketFD, TIOCOUTQ, &checkSend);
-	} while (checkSend > 0);
-	if (checkSend < 0)
-	{
-		error("ioctl error");
-	}
-}
-
-int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
-{
 	FILE* fileInput = fopen(fileName, "r"); // Open plaintext file
 	memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
 
@@ -171,16 +145,15 @@ int sendFile(char* fileName, char buffer[], char* termString, int socketFD)
 		count++;
 		
 		// Send message to server
-		sendMessage(fileBuffer, socketFD);
+		sendMessage(source, fileBuffer, socketFD);
 		// Get return message from server
-		getResponse(buffer, socketFD);
+		getResponse(source, buffer, socketFD);
 
 		memset(buffer, '\0', OTP_BUFFERSIZE); // Clear out the buffer array
 	}
-	// printf("Number of sends needed: %d\n", count);
 	// Send Termination Signal
-	sendMessage(termString, socketFD);
-	getResponse(buffer, socketFD);
+	sendMessage(source, termString, socketFD);
+	getResponse(source, buffer, socketFD);
 	// Close File
 	fclose(fileInput);
 }

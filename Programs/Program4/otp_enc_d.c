@@ -7,91 +7,43 @@
 #include <sys/wait.h>
 #include <netinet/in.h>
 
-#define OTP_BUFFERSIZE 256
-#define OTP_MAX_CONNECTIONS 5
-#define OTP_NUMCHARS 27
+#include "otp_helpers.h"
 
-struct OneTimePad {
-	char* plaintext;
-	char* key;
-	char* ciphertext;
-};
-
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
-
-int getFromClient(char buffer[], int establishedConnectionFD);
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD);
-int sendMessage(char* message, int socketFD);
+int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD);
 
-int initOTP(struct OneTimePad* pad);
-int freeOTP(struct OneTimePad* pad);
-int appendString(char** string, char* input);
-int getClientFile(char buffer[], char* termString, char** fileString, int establishedConnectionFD);
-
-int getCharVal(char character)
+int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
 {
-    if (character >= 'A' && character <= 'Z')
-    {
-        return character - 'A';
-    }
-    else if (character == ' ')
-    {
-        return 26;
-    }
-    else
-    {
-        fprintf(stderr, "ERROR invalid character '%c' detected\n", character);
-        exit(1);
-    }
-    return -1;
-}
+    int bufferIndex = 0;
+	char* source = "SERVER";
 
-char getIntChar(int value)
-{
-    if (value == OTP_NUMCHARS - 1) {return ' ';}
-    else if (value < OTP_NUMCHARS) {return (char) value + 'A';}
-    else
-    {
-        fprintf(stderr, "ERROR invalid value '%d' detected\n", value);
-        exit(1);
-    }
-    return -1;
-}
-    
-int OTP_encode(struct OneTimePad* encoder)
-{
-    int plaintextLength = strlen(encoder->plaintext), keyLength = strlen(encoder->key);
-    if (plaintextLength > keyLength) {error("ERROR plaintext length greater than key length\n");}
-    char plaintextCharacter, keyCharacter;
-    encoder->ciphertext = malloc(plaintextLength * sizeof(char));
-
+    // Loop Through the String, building a packet to send
     int index;
-    for(index = 0; index < plaintextLength - 1; index++)
+    for (index = 0; index < strlen(output); index++)
     {
-        int messageKey = getCharVal(encoder->plaintext[index]) + getCharVal(encoder->key[index]);
-        char cipherChar = getIntChar(messageKey % OTP_NUMCHARS);
-        (encoder->ciphertext)[index] = cipherChar;
+        // If packet reaches 
+        if (bufferIndex == OTP_BUFFERSIZE - 1)
+        {
+			// Store Termination character
+			buffer[bufferIndex + 1] = '\0';
+			// Reset Iterator
+            bufferIndex = 0;
+			// Send packet and receive response.
+			sendMessage(source, buffer, fileDescriptor);
+			getResponse(source, buffer, fileDescriptor);
+            memset(buffer, '\0', OTP_BUFFERSIZE);
+        }
+        buffer[bufferIndex] = output[index];
+        bufferIndex++;
     }
-    (encoder->ciphertext)[index] = '\n';
-
-    return 0;
-}
-
-int OTP_decode(struct OneTimePad* decoder)
-{
-    int ciphertextLength = strlen(decoder->ciphertext), keyLength = strlen(decoder->key);
-    if (ciphertextLength > keyLength) {error("ERROR decoder->ciphertext length greater than decoder->key length\n");}
-    char ciphertextCharacter, keyCharacter;
-    decoder->plaintext = malloc(ciphertextLength * sizeof(char));
-
-    int index;
-    for(index = 0; index < ciphertextLength - 1; index++)
-    {
-        int messageKey = getCharVal(decoder->ciphertext[index]) - getCharVal(decoder->key[index]);
-        char plainChar = getIntChar((messageKey + OTP_NUMCHARS) % OTP_NUMCHARS);
-        decoder->plaintext[index] = plainChar;
-    }
-    decoder->plaintext[index] = '\n';
+    // Send the remaining buffer
+    // printf("Packet: '%s'\n", buffer);
+	sendMessage(source, buffer, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
+    // Send termination character
+    // printf("%s", terminationString);
+	sendMessage(source, terminationString, fileDescriptor);
+	getResponse(source, buffer, fileDescriptor);
 
     return 0;
 }
@@ -100,6 +52,7 @@ int main(int argc, char *argv[])
 {
 	char* clientVerifier = "OTP_ENC";
 	char* terminationString = "$OTP_TERMINATE";
+	char* source = "SERVER";
 
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
@@ -141,20 +94,24 @@ int main(int argc, char *argv[])
 		pid_t spawnPID = -5;
 		int childExitMethod = -5;
 
+		// Create a fork to get the files, encode the message, the send the ciphertext
 		spawnPID = fork();
 
 		switch (spawnPID)
 		{
+			// Catch errors
 			case -1:
 			{
 				error("fork() failed\n");
 				exit(1);
 				break;
 			}
+			// Get the files, encode the message, send the ciphertext
 			case 0:
 			{
 				// Get verifification message from client and send result code back
-				getFromClient(buffer, establishedConnectionFD);
+				getResponse(source, buffer, establishedConnectionFD);
+				// getFromClient(buffer, establishedConnectionFD);
 				sendVerificationResult(buffer, clientVerifier, establishedConnectionFD);
 
 				// Initialize the OneTimePad files;
@@ -162,28 +119,23 @@ int main(int argc, char *argv[])
 				initOTP(&pad);
 
 				// Get Plain Text
-				getClientFile(buffer, terminationString, &pad.plaintext, establishedConnectionFD);
+				getClientFile(source, buffer, terminationString, &pad.plaintext, establishedConnectionFD);
 
 				// Get Key
-				getClientFile(buffer, terminationString, &pad.key, establishedConnectionFD);
+				getClientFile(source, buffer, terminationString, &pad.key, establishedConnectionFD);
 
 				// Encode Text
 				OTP_encode(&pad);
-				printf("Plaintext: '%s'\n", pad.plaintext);
-				printf("Cipher: '%s'\n", pad.ciphertext);
 
 				// Send the cipher text to client
-				// sendMessage(pad.plaintext, establishedConnectionFD);
-
-				// printf("Plain Text:\n%s\n", pad.plaintext);
-				// printf("Key:\n%s\n", pad.key);
-
-				freeOTP(&pad);
-
+				sendString(pad.ciphertext, buffer, terminationString, establishedConnectionFD);
+				
+				freeOTP(&pad);					// Clear the One Time Pad
 				close(establishedConnectionFD); // Close the existing socket which is connected to the client
 				exit(0);
 				break;
 			}
+			// Save the process, check for any completed processes, and continue recieving requests
 			default:
 			{
 				int savedPID = 0;	// Flag checks to see if background PID was saved
@@ -234,18 +186,6 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
-int getFromClient(char buffer[], int establishedConnectionFD)
-{
-	int charsRead;
-
-	memset(buffer, '\0', OTP_BUFFERSIZE);
-	charsRead = recv(establishedConnectionFD, buffer, OTP_BUFFERSIZE - 1, 0); // Read the client's message from the socket
-	if (charsRead < 0) error("ERROR reading from socket");
-	// printf("SERVER: I received this from the client: \"%s\"\n", buffer); // DEBUGGING
-
-	return 0;
-}
-
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD)
 {
 	int charsRead;
@@ -265,60 +205,7 @@ int sendVerificationResult(char buffer[], char* clientVerifier, int establishedC
 	return 0;
 }
 
-int initOTP(struct OneTimePad* pad)
-{
-	// Initalize values to NULL
-	pad->plaintext = NULL;
-	pad->key = NULL;
-	pad->ciphertext = NULL;
-
-	return 0;
-}
-
-int freeOTP(struct OneTimePad* pad)
-{
-	if (pad->plaintext != NULL)
-	{
-		free(pad->plaintext);
-	}
-	if (pad->key != NULL)
-	{
-	free(pad->key);
-	}
-	if (pad->ciphertext != NULL)
-	{
-		free(pad->ciphertext);
-	}
-}
-
-int appendString(char** string, char* input)
-{
-    // If the string is not empty, combine string and input
-    if (*string != NULL)
-    {
-        // Make a temporary string
-        size_t newLength = strlen(*string) + strlen(input) + 1;
-        char* temp = malloc(newLength * sizeof(char));
-        // Combine old string and input into temporary string
-        sprintf(temp, "%s%s", *string, input);
-        // Save new string
-        free(*string);
-        *string = malloc(newLength * sizeof(char));
-        strcpy(*string, temp);
-        // Deallocate Temp
-        free(temp);
-    }
-    // Otherwise, initialize the empty string and set it to the input;
-    else
-    {
-        *string = malloc(strlen(input) * sizeof(char));
-        strcpy(*string, input);
-    }
-
-    return 0;
-}
-
-int getClientFile(char buffer[], char* termString, char** fileString, int establishedConnectionFD)
+int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD)
 {
 	int charsRead;
 
@@ -327,7 +214,7 @@ int getClientFile(char buffer[], char* termString, char** fileString, int establ
 	while(1)
 	{
 		// Get part of the file
-		getFromClient(buffer, establishedConnectionFD);
+		getResponse(source, buffer, establishedConnectionFD);
 
 		// Send confirmation that message was recieved to client
 		charsRead = send(establishedConnectionFD, "200", 3, 0); // Send success back
@@ -345,18 +232,6 @@ int getClientFile(char buffer[], char* termString, char** fileString, int establ
 			break;
 		}
 	}
-
-	return 0;
-}
-
-int sendMessage(char* message, int connectionFD)
-{
-	int charsWritten;
-
-	// printf("SERVER: I sent this to the client \"%s\" %ld\n", message, strlen(message));
-	charsWritten = send(connectionFD, message, strlen(message), 0); // Write to the server
-	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
-	if (charsWritten < strlen(message)) printf("SERVER: WARNING: Not all data written to socket!\n");
 
 	return 0;
 }
