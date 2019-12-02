@@ -1,3 +1,15 @@
+/*********************************************************************
+** Program name:    OTP
+** Author:          Herbert Diaz <diazh@oregonstate.edu>
+** Date:            12/1/2019
+** Description:     Program 4 for CS344 Operating Systems @ OSU
+**  Program Function:
+**		Usage: otp_dec [ciphertext] [key] [port]
+**		otp_dec works with otp_dec_d to decode a ciphertext file
+**		into plaintext, using a provided key. This program serves
+**		as the client, where the user runs this program to recieve
+**		the decoded text.
+*********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -88,6 +100,14 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+/*********************************************************************
+ * int checkFile(char* fileName)
+ *  Makes sure the file only has valid characters
+ * Arguments:
+ * 	char* fileName - the name of the file
+ * Returns:
+ * 	int count - the number of characters in the file.
+*********************************************************************/
 int checkFile(char* fileName)
 {
     int character;  // holds the integer value of the character
@@ -116,6 +136,13 @@ int checkFile(char* fileName)
     return count;
 }
 
+/*********************************************************************
+ * void validateFiles(char* ciphertext, char* key)
+ *  Ensures the files for the program are valid.
+ * Arguments:
+ * 	char* cipher - the ciphertext file to be encoded
+ *  char* key - the keyfile to be used to encode the ciphertext file.
+*********************************************************************/
 void validateFiles(char* ciphertext, char* key)
 {
     // Check if files are valid and record number of characters
@@ -130,6 +157,18 @@ void validateFiles(char* ciphertext, char* key)
     }
 }
 
+/*********************************************************************
+ * int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD)
+ *  Sends a file to the server
+ * Arguments:
+ * 	char* source - whether the program is the server or client
+ *  char* fileName - the name of the file to send
+ *  char* buffer[] - the buffer that holds the text to send
+ *  char* termString - the termination string to indicate completion
+ *  int socketFD - the socket for the connection.
+ * Returns:
+ * 	0 if successful
+*********************************************************************/
 int sendFile(char* source, char* fileName, char buffer[], char* termString, int socketFD)
 {
 
@@ -155,4 +194,6 @@ int sendFile(char* source, char* fileName, char buffer[], char* termString, int 
 	getResponse(source, buffer, socketFD);
 	// Close File
 	fclose(fileInput);
+	
+	return 0;
 }
