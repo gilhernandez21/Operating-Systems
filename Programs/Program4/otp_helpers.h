@@ -1,3 +1,13 @@
+/*********************************************************************
+** Program name:    OTP
+** Author:          Herbert Diaz <diazh@oregonstate.edu>
+** Date:            12/1/2019
+** Description:     Program 4 for CS344 Operating Systems @ OSU
+**  Program Function:
+**      These are the helper functions for otp_enc, otp_dec,
+**      otp_enc_d, and otp_dec_d. These programs encode and decode
+**      text using a key. This is the header file.
+*********************************************************************/
 #ifndef OTP_HELPERS_H
 #define OTP_HELPERS_H
 

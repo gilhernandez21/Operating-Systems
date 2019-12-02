@@ -1,3 +1,13 @@
+/*********************************************************************
+** Program name:    OTP
+** Author:          Herbert Diaz <diazh@oregonstate.edu>
+** Date:            12/1/2019
+** Description:     Program 4 for CS344 Operating Systems @ OSU
+**  Program Function:
+**      These are the helper functions for otp_enc, otp_dec,
+**      otp_enc_d, and otp_dec_d. These programs encode and decode
+**      text using a key. This is the implementation file.
+*********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,6 +23,14 @@
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
+/*********************************************************************
+ * int checkSent(int socketFD)
+ *  Verifies the message has been sent.
+ * Arguments:
+ * 	int socketFD - the file descriptor of the connection.
+ * Returns:
+ * 	0 on success.
+*********************************************************************/
 int checkSent(int socketFD)
 {
 	int checkSend = 5;
@@ -24,8 +42,20 @@ int checkSent(int socketFD)
 	{
 		error("ioctl error");
 	}
+
+    return 0;
 }
 
+/*********************************************************************
+ * int sendMessage(char* source, char* message, int fileDescriptor)
+ *  Sends a message to the connection.
+ * Arguments:
+ * 	char* source - Whether the server or client is sending the message.
+ *  char* message - the message to send.
+ *  int fileDescriptor - the file descriptor of the connection.
+ * Returns:
+ * 	0 on success.
+*********************************************************************/
 int sendMessage(char* source, char* message, int fileDescriptor)
 {
 	int charsWritten;
@@ -39,6 +69,16 @@ int sendMessage(char* source, char* message, int fileDescriptor)
 	return 0;
 }
 
+/*********************************************************************
+ * int getResponse(char* source, char buffer[], int fileDescriptor)
+ *  Recieves a message from a connection
+ * Arguments:
+ * 	char* source - Whether the server or client is sending the message.
+ *  char* buffer[] - The location to hold the recieves message
+ *  int fileDescriptor - the file descriptor of the connection.
+ * Returns:
+ * 	0 on success.
+*********************************************************************/
 int getResponse(char* source, char buffer[], int fileDescriptor)
 {
 	int charsRead;
@@ -51,6 +91,15 @@ int getResponse(char* source, char buffer[], int fileDescriptor)
 	return 0;
 }
 
+/*********************************************************************
+ * int getCharVal(char character)
+ *  Gets the numerical value of a character
+ * Arguments:
+ * 	char character - the character to translate
+ * Returns:
+ * 	int - the int value of the character
+ *  -1 if failed
+*********************************************************************/
 int getCharVal(char character)
 {
     if (character >= 'A' && character <= 'Z')
@@ -69,6 +118,15 @@ int getCharVal(char character)
     return -1;
 }
 
+/*********************************************************************
+ * char getIntChar(int value)
+ *  Gets character of the integer value
+ * Arguments:
+ * 	int value - the integer to translate
+ * Returns:
+ * 	char - the character of the int value
+ *  -1 if failed
+*********************************************************************/
 char getIntChar(int value)
 {
     if (value == OTP_NUMCHARS - 1) {return ' ';}
@@ -80,7 +138,16 @@ char getIntChar(int value)
     }
     return -1;
 }
-    
+
+/*********************************************************************
+ * int OTP_encode(struct OneTimePad* encoder)
+ *  Encodes a string via the One Time Pad method
+ * Arguments:
+ * 	struct OneTimePad* encoder - the location of the struct that holds
+ *  the plaintext file, the key, and the ciphertext
+ * Returns:
+ * 	0 on success
+*********************************************************************/
 int OTP_encode(struct OneTimePad* encoder)
 {
     int plaintextLength = strlen(encoder->plaintext), keyLength = strlen(encoder->key);
@@ -101,6 +168,15 @@ int OTP_encode(struct OneTimePad* encoder)
     return 0;
 }
 
+/*********************************************************************
+ * int OTP_decode(struct OneTimePad* encoder)
+ *  Decodes a string via the One Time Pad method
+ * Arguments:
+ * 	struct OneTimePad* decoder - the location of the struct that holds
+ *  the plaintext file, the key, and the ciphertext
+ * Returns:
+ * 	0 on success
+*********************************************************************/
 int OTP_decode(struct OneTimePad* decoder)
 {
     int ciphertextLength = strlen(decoder->ciphertext), keyLength = strlen(decoder->key);
@@ -121,6 +197,15 @@ int OTP_decode(struct OneTimePad* decoder)
     return 0;
 }
 
+/*********************************************************************
+ * int initOTP(struct OneTimePad* pad)
+ *  Initializes the OneTimePad struct
+ * Arguments:
+ * 	struct OneTimePad* encoder - the location of the struct that holds
+ *  the plaintext file, the key, and the ciphertext
+ * Returns:
+ * 	0 on success
+*********************************************************************/
 int initOTP(struct OneTimePad* pad)
 {
 	// Initalize values to NULL
@@ -131,6 +216,15 @@ int initOTP(struct OneTimePad* pad)
 	return 0;
 }
 
+/*********************************************************************
+ * int freeOTP(struct OneTimePad* pad)
+ *  Frees any allocated memory in the OneTimePad struct
+ * Arguments:
+ * 	struct OneTimePad* encoder - the location of the struct that holds
+ *  the plaintext file, the key, and the ciphertext
+ * Returns:
+ * 	0 on success
+*********************************************************************/
 int freeOTP(struct OneTimePad* pad)
 {
 	if (pad->plaintext != NULL)
@@ -145,8 +239,19 @@ int freeOTP(struct OneTimePad* pad)
 	{
 		free(pad->ciphertext);
 	}
+
+    return 0;
 }
 
+/*********************************************************************
+ * int appendString(char** string, char* input)
+ *  Appends a string into another string
+ * Arguments:
+ * 	char** string - the location of the string to be appended to
+ *  char* input - the string to add to the first string
+ * Returns:
+ * 	0 on success
+*********************************************************************/
 int appendString(char** string, char* input)
 {
     // If the string is not empty, combine string and input
