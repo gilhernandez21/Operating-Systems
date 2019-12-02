@@ -125,7 +125,7 @@ void validateFiles(char* ciphertext, char* key)
     // If the key file is shorter than the ciphertext, terminate and send error
     if (keyCount < ciphertextCount)
     {
-        fprintf(stderr, "ERROR key file '%s' shorter than ciphertext '%s'\n", key, ciphertext);
+        fprintf(stderr, "Error: key '%s' is too short\n", key);
         exit(1);
     }
 }

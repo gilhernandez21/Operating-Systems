@@ -125,7 +125,7 @@ void validateFiles(char* plaintext, char* key)
     // If the key file is shorter than the plaintext, terminate and send error
     if (keyCount < plaintextCount)
     {
-        fprintf(stderr, "ERROR key file '%s' shorter than plaintext '%s'\n", key, plaintext);
+        fprintf(stderr, "Error: key '%s' is too short\n", key);
         exit(1);
     }
 }
