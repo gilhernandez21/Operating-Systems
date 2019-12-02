@@ -1,3 +1,17 @@
+/*********************************************************************
+** Program name:    OTP
+** Author:          Herbert Diaz <diazh@oregonstate.edu>
+** Date:            12/1/2019
+** Description:     Program 4 for CS344 Operating Systems @ OSU
+**  Program Function:
+**		Usage: otp_enc_d [port]
+**		otp_enc_d works with otp_enc to decode a plaintext file
+**		into ciphertext, using a provided key. This program serves as
+**		the server. This program takes the plaintext and the key from
+**		the client, encodes the plaintext, and sends the encoded text
+**		back to the client.
+**		Code adapted from server.c from Program 4 Lecture
+*********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -149,6 +163,17 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
+/*********************************************************************
+ * int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD)
+ *  Sends a confirmation that the message was recieved from the client
+ * Arguments:
+ *  char buffer[] - the buffer that holds the recieved message
+ *  char* clientVerifier - the validation code to ensure the usage of
+ *  	the correct client.
+ * 	int establishedConnectionFD - the fileDescriptor of the connection
+ * Returns:
+ * 	0 if successful
+*********************************************************************/
 int sendVerificationResult(char buffer[], char* clientVerifier, int establishedConnectionFD)
 {
 	int charsRead;
@@ -168,6 +193,20 @@ int sendVerificationResult(char buffer[], char* clientVerifier, int establishedC
 	return 0;
 }
 
+/*********************************************************************
+ * int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD)
+ *  Gets a file from the client and saves as a string
+ * Arguments:
+ *	char* source - whether the program is a server or client
+ *	char buffer[] - holds the message recieved from th eclient
+ *	char* termString - the string to indicate that a file has been
+ *		completely sent.
+ *	char** fileString - the location of the string that will hold the
+ *		file sent by the client.
+ * 	int establishedConnectionFD - the file descriptor of the connection
+ * Returns:
+ * 	0 if successful
+*********************************************************************/
 int getClientFile(char* source, char buffer[], char* termString, char** fileString, int establishedConnectionFD)
 {
 	int charsRead;
@@ -199,6 +238,18 @@ int getClientFile(char* source, char buffer[], char* termString, char** fileStri
 	return 0;
 }
 
+/*********************************************************************
+ * int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
+ *  Sends a string to the client
+ * Arguments:
+ *	char* output - the string to be sent to the client
+ *	char buffer[] - holds part of the string to send
+ *	char* terminationString - the string to indicate that a file has
+ *		been completely sent.
+ * 	int fileDescriptor - the file descriptor of the connection
+ * Returns:
+ * 	0 if successful
+*********************************************************************/
 int sendString(char* output, char buffer[], char* terminationString, int fileDescriptor)
 {
     int bufferIndex = 0;

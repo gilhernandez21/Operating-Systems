@@ -9,6 +9,7 @@
 **		into ciphertext, using a provided key. This program serves
 **		as the client, where the user runs this program to recieve
 **		the encoded text.
+**		Code adapted from server.h from Program 4 Lecture
 *********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
